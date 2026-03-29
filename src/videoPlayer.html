@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Steel Ball Run: JoJo no Kimyou na Bouken - EP 1 — ANI-ME-CLI</title>
+  <link href="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls-ui.css" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0f;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    h1 {
+      color: #e879f9;
+      margin-bottom: 16px;
+      font-size: 1.2rem;
+      letter-spacing: 1px;
+    }
+    video {
+      width: 90vw;
+      max-width: 960px;
+      background: #000;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body>
+  <h1>▶ Steel Ball Run: JoJo no Kimyou na Bouken - EP 1</h1>
+  <video id="player" controls>
+    
+  </video>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+  <script>
+    const video = document.getElementById('player');
+    const url = 'https://myanime.sharepoint.com/sites/chartlousty/_layouts/15/download.aspx?share=IQA6%2DRTycJ8RTI4GjAu8bEGxAUgabOkV6y84sVzwyGVDoOQ';
+    if (url.includes('.m3u8') && Hls.isSupported()) {
+      const hls = new Hls();
+      hls.loadSource(url);
+      hls.attachMedia(video);
+    } else {
+      video.src = url;
+    }
+  </script>
+</body>
+</html>
