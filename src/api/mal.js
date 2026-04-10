@@ -26,9 +26,15 @@ async function jikanGet(path) {
  * @param {number} limit - Max results (default 15)
  * @returns {Promise<Array<{name, score, episodes, type, imageUrl, synopsis, malId, genres, season}>>}
  */
-export async function getTopAiring(limit = 25) {
-  const data = await jikanGet(`/top/anime?filter=airing&limit=${limit}`);
-  return (data?.data || []).map(a => ({
+export async function getTopAiring() {
+  // Jikan /top/anime ignores custom limits and always returns 25 per page.
+  // Fetch page 1 and page 2 to have enough for spotlight (1) + trending (25).
+  const [p1, p2] = await Promise.all([
+    jikanGet('/top/anime?filter=airing&page=1'),
+    jikanGet('/top/anime?filter=airing&page=2'),
+  ]);
+  const raw = [...(p1?.data || []), ...(p2?.data || [])];
+  return raw.map(a => ({
     name: a.title || a.title_english || 'Unknown',
     score: a.score || null,
     episodes: a.episodes || null,
@@ -51,13 +57,15 @@ export async function getTopAiring(limit = 25) {
  * @returns {Promise<Array<{name, episode, episodeTitle, malId, imageUrl}>>}
  */
 export async function getLatestEpisodes() {
-  const data = await jikanGet('/watch/episodes');
+  // Fallback to active simulcasts (/seasons/now) to fetch high-quality,
+  // popular airing anime instead of uncurated kids TV blocks from /schedules.
+  const data = await jikanGet('/seasons/now?limit=25');
   return (data?.data || []).slice(0, 25).map(item => ({
-    name: item.entry?.title || 'Unknown',
-    malId: item.entry?.mal_id || null,
-    imageUrl: item.entry?.images?.jpg?.image_url || null,
-    episode: item.episodes?.[0]?.mal_id || null,
-    episodeTitle: item.episodes?.[0]?.title || '',
+    name: item.title || 'Unknown',
+    malId: item.mal_id || null,
+    imageUrl: item.images?.jpg?.image_url || null,
+    episode: 'New',
+    episodeTitle: 'Air Drop',
   }));
 }
 
@@ -72,7 +80,8 @@ export async function getHomeData() {
   let latestEps = [];
 
   try {
-    topAnime = await getTopAiring(25);
+    // Fetch pages 1+2 in parallel so we have 50 candidates for spotlight + 25 trending
+    topAnime = await getTopAiring();
   } catch (err) {}
 
   // artificial buffer for strict adherence
@@ -82,10 +91,25 @@ export async function getHomeData() {
     latestEps = await getLatestEpisodes();
   } catch (err) {}
 
+  // Deduplicate by malId — /seasons/now sometimes returns the same show
+  // twice (e.g. Part 2 vs Part 3 share the same base title)
+  function dedup(arr) {
+    const seen = new Set();
+    return arr.filter(a => {
+      const key = a.malId || a.name;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }
+
+  const trendingRaw = dedup(topAnime.slice(1)).slice(0, 25);
+  const latestRaw   = dedup(latestEps).filter(a => a.imageUrl).slice(0, 25);
+
   return {
     spotlight: topAnime[0] || null,
-    trending: topAnime.slice(1, 25),
-    latest: latestEps.slice(0, 25),
+    trending: trendingRaw,
+    latest: latestRaw,
   };
 }
 

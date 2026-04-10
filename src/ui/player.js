@@ -22,7 +22,7 @@ export async function showPlayerScreen(layout, navigate, data = {}) {
     data.animeName || 'Anime',
     `EP ${data.episodeNumber || '?'} [${modeLabel}]`,
   ]);
-  setStatus([['↑↓', 'Select quality'], ['Enter', 'Play'], ['b', 'Back'], ['q', 'Quit']]);
+  setStatus([['↑↓', 'Select quality'], ['Enter', 'Play'], ['b', 'Back'], ['h', 'Home']]);
 
   // ─── Now Playing Card ──────────────────────────────────────────
   const nowPlayingCard = blessed.box({
@@ -192,6 +192,10 @@ export async function showPlayerScreen(layout, navigate, data = {}) {
       });
     });
 
+    screen.key(['h'], () => {
+      navigate('home', {});
+    });
+
     screen.render();
 
   } catch (err) {
@@ -207,6 +211,10 @@ export async function showPlayerScreen(layout, navigate, data = {}) {
         dubEpisodes: data.dubEpisodes,
         mode: data.mode,
       });
+    });
+
+    screen.key(['h'], () => {
+      navigate('home', {});
     });
   }
 }

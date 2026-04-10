@@ -21,7 +21,7 @@ let currentData = null;
  * to prevent event handler stacking across navigations
  */
 function cleanupKeyListeners(screen) {
-  const screenKeys = ['/', 'b', 'left', 'right', 'up', 'down', 'enter', 'tab', 'r'];
+  const screenKeys = ['/', 'b', 'h', 'left', 'right', 'up', 'down', 'enter', 'tab', 'r'];
   screenKeys.forEach(key => {
     screen.removeAllListeners(`key ${key}`);
   });
@@ -43,6 +43,17 @@ function navigate(screenName, data = {}) {
 
   // Remove previous screen-level key listeners to prevent stacking
   cleanupKeyListeners(layout.screen);
+
+  // Wipe the entire terminal to clear raw image pixels (chafa writes
+  // directly to the terminal, bypassing blessed's internal buffer).
+  // This deep clear specifically guarantees no scrolling artifacts pile up.
+  console.clear();
+  process.stdout.write('\x1b[2J\x1b[3J\x1b[H');
+  layout.screen.program.clear();
+  layout.screen.clearRegion(0, layout.screen.width, 0, layout.screen.height);
+  if (layout.screen.lines) {
+    layout.screen.lines.forEach(line => { line.dirty = true; });
+  }
 
   // Route to the correct screen
   switch (screenName) {
@@ -78,9 +89,18 @@ function goBack() {
     currentData = prev.data;
     cleanupKeyListeners(layout.screen);
 
+    // Wipe raw terminal pixels (same as navigate)
+    console.clear();
+    process.stdout.write('\x1b[2J\x1b[3J\x1b[H');
+    layout.screen.program.clear();
+    layout.screen.clearRegion(0, layout.screen.width, 0, layout.screen.height);
+    if (layout.screen.lines) {
+      layout.screen.lines.forEach(line => { line.dirty = true; });
+    }
+
     switch (prev.screen) {
       case 'home':
-        showHomeScreen(layout, navigate);
+        showHomeScreen(layout, navigate, { fromBack: true });
         break;
       case 'search':
         showSearchScreen(layout, navigate, prev.data);
@@ -93,7 +113,7 @@ function goBack() {
         break;
     }
   } else {
-    navigate('home');
+    navigate('home', { fromBack: true });
   }
 }
 

@@ -18,7 +18,7 @@ export async function showSearchScreen(layout, navigate, initialData = {}) {
 
   content.children.forEach(c => c.destroy());
   setTab('search');
-  setStatus([['Type', 'Search'], ['↑↓', 'Results'], ['Enter', 'Select'], ['Tab', 'Sub/Dub'], ['b', 'Back']]);
+  setStatus([['Type', 'Search'], ['↑↓', 'Results'], ['Enter', 'Select'], ['Tab', 'Sub/Dub'], ['b', 'Back'], ['h', 'Home']]);
 
   let currentQuery = initialData.query || '';
   let currentMode = initialData.mode || 'sub';
@@ -218,6 +218,10 @@ export async function showSearchScreen(layout, navigate, initialData = {}) {
   });
 
   screen.key(['b'], () => {
+    navigate('home', {});
+  });
+
+  screen.key(['h'], () => {
     navigate('home', {});
   });
 

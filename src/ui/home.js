@@ -68,13 +68,35 @@ function sectionDivider(title, w) {
   return `{bold}{${COLORS.accent}-fg} ${title} {/}{${COLORS.borderDim}-fg}${BOX.h.repeat(lineLen)}{/}`;
 }
 
-// ─── Image Caching Context ───────────────────────────────────────
+// ─── Image Caching & State Context ───────────────────────────────
 const activeImages = [];
 let currentScreen = null;
 let renderTimer = null;
+let cachedState = null;
+
+function cleanupHome() {
+  clearTimeout(renderTimer);
+  activeImages.length = 0;
+  if (currentScreen) {
+    currentScreen.removeListener('render', paintAllImages);
+    currentScreen = null;
+  }
+}
 
 function paintAllImages() {
   if (!currentScreen) return;
+  if (activeImages.length === 0) return;
+
+  // Guard: if home screen boxes have been destroyed (navigated away),
+  // clean up this listener so it doesn't corrupt other screens
+  const firstImg = activeImages[0];
+  if (!firstImg.box.parent) {
+    clearTimeout(renderTimer);
+    activeImages.length = 0;
+    currentScreen.removeListener('render', paintAllImages);
+    currentScreen = null;
+    return;
+  }
 
   clearTimeout(renderTimer);
   renderTimer = setTimeout(() => {
@@ -205,34 +227,44 @@ function makeCards(parent, top, items, colorOffset, isLatest, screen, startX = 4
 }
 
 // ─── Main Home Screen ────────────────────────────────────────────
-export async function showHomeScreen(layout, navigate) {
+export async function showHomeScreen(layout, navigate, data = {}) {
   const { screen, content, setTab, setStatus } = layout;
   content.children.forEach(c => c.destroy());
   setTab('home');
   setStatus([['↑↓', 'Section'], ['←→', 'Card'], ['Enter', 'Select'], ['/', 'Search'], ['q', 'Quit']]);
 
   // Handle global image caching and rendering hooks
+  cleanupHome();
   currentScreen = screen;
-  activeImages.length = 0;
-  screen.removeListener('render', paintAllImages);
   screen.on('render', paintAllImages);
 
   const contentW = screen.width || 80;
+  
+  // State variables
   let sec = 0, ci = [0, 0, 0];
   let tStartIndex = 0, lStartIndex = 0;
   let homeData = { spotlight: null, trending: [], latest: [] };
   let spotBox = null, tCards = [], lCards = [];
 
-  // ─── Loading ───────────────────────────────────────────────────
-  const spinner = createLoadingSpinner(content, 'Fetching fresh anime data...');
-  screen.render();
+  // Restore state if returning from another screen
+  if (data.fromBack && cachedState) {
+    sec = cachedState.sec;
+    ci = [...cachedState.ci];
+    tStartIndex = cachedState.tStartIndex;
+    lStartIndex = cachedState.lStartIndex;
+    homeData = cachedState.homeData;
+  } else {
+    // ─── Loading ───────────────────────────────────────────────────
+    const spinner = createLoadingSpinner(content, 'Fetching fresh anime data...');
+    screen.render();
 
-  try {
-    homeData = await getHomeData();
-  } catch {
-    // silent fail
+    try {
+      homeData = await getHomeData();
+    } catch {
+      // silent fail
+    }
+    spinner.destroy();
   }
-  spinner.destroy();
 
   const { spotlight, trending, latest } = homeData;
 
@@ -252,7 +284,10 @@ export async function showHomeScreen(layout, navigate) {
         `  {${COLORS.textMuted}-fg}Press {bold}{${COLORS.accent}-fg}/{/}{${COLORS.textMuted}-fg} to search manually on AllAnime{/}`,
       ].join('\n'),
     });
-    screen.key(['/'], () => navigate('search', {}));
+    screen.key(['/'], () => {
+      cleanupHome();
+      navigate('search', {});
+    });
     screen.render();
     return;
   }
@@ -455,6 +490,11 @@ export async function showHomeScreen(layout, navigate) {
       }
     }
 
+    // Save state so we can return exactly where we left off
+    cachedState = {
+      sec, ci: [...ci], tStartIndex, lStartIndex, homeData
+    };
+
     screen.render();
   }
 
@@ -513,11 +553,21 @@ export async function showHomeScreen(layout, navigate) {
     else anime = latest[ci[2]];
 
     if (anime) {
-      navigate('search', { query: anime.name, mode: 'sub' });
+      cleanupHome();
+      if (anime.id) {
+        // Latest items already have an AllAnime ID, navigate directly to details
+        navigate('detail', { showId: anime.id, animeName: anime.name, mode: 'sub' });
+      } else {
+        // Spotlight/Trending only have MAL IDs, so we must rely on a text search
+        navigate('search', { query: anime.name, mode: 'sub' });
+      }
     }
   });
 
-  screen.key(['/'], () => navigate('search', {}));
+  screen.key(['/'], () => {
+    cleanupHome();
+    navigate('search', {});
+  });
 
   updateSelection();
 }

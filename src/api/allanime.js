@@ -77,6 +77,15 @@ const SEARCH_GQL = `query(
 const EPISODES_GQL = `query ($showId: String!) {
   show(_id: $showId) {
     _id
+    name
+    englishName
+    description
+    score
+    thumbnail
+    type
+    status
+    studios
+    genres
     availableEpisodesDetail
   }
 }`;
@@ -99,16 +108,16 @@ const EPISODE_SOURCES_GQL = `query (
 // ─── HTTP Helper ─────────────────────────────────────────────────
 
 async function gqlRequest(variables, query) {
-  const url = new URL(ALLANIME_API);
-  url.searchParams.set('variables', JSON.stringify(variables));
-  url.searchParams.set('query', query);
-
-  const res = await fetch(url.toString(), {
-    method: 'GET',
+  // AllAnime now blocks GET requests with Cloudflare 403.
+  // Must use POST with JSON body (matching ani-cli's approach).
+  const res = await fetch(ALLANIME_API, {
+    method: 'POST',
     headers: {
       'User-Agent': USER_AGENT,
       'Referer': ALLANIME_REFERER,
+      'Content-Type': 'application/json',
     },
+    body: JSON.stringify({ variables, query }),
   });
 
   if (!res.ok) throw new Error(`AllAnime API ${res.status}: ${res.statusText}`);
@@ -165,9 +174,24 @@ export async function search(query, mode = 'sub') {
  */
 export async function getEpisodeList(showId, mode = 'sub') {
   const data = await gqlRequest({ showId }, EPISODES_GQL);
-  const detail = data?.data?.show?.availableEpisodesDetail || {};
-  const episodes = detail[mode] || [];
-  return episodes.map(e => parseFloat(e)).sort((a, b) => a - b);
+  const show = data?.data?.show || {};
+  const detail = show.availableEpisodesDetail || {};
+  const episodes = (detail[mode] || []).map(e => parseFloat(e)).sort((a, b) => a - b);
+  
+  return {
+    episodes,
+    meta: {
+      name: show.name,
+      englishName: show.englishName,
+      description: show.description ? show.description.replace(/<[^>]*>?/gm, '').replace(/&[a-z]+;/gi, ' ') : 'No description available.',
+      score: show.score,
+      thumbnail: show.thumbnail ? (show.thumbnail.startsWith('http') ? show.thumbnail : `https://w.allanime.day/${show.thumbnail.replace(/^\//, '')}`) : null,
+      type: show.type,
+      status: show.status,
+      studios: show.studios || [],
+      genres: show.genres || []
+    }
+  };
 }
 
 /**
