@@ -1,6 +1,6 @@
 // ─── Main Layout Shell ───────────────────────────────────────────
 // Persistent layout: Header, ContentArea, StatusBar
-// Supports tab mode and breadcrumb mode for navigation context
+// Premium design with gradient header and animated status bar
 
 import blessed from 'neo-blessed';
 import { COLORS, BOX } from './components.js';
@@ -13,7 +13,7 @@ export function createLayout() {
   // ─── Screen ────────────────────────────────────────────────────
   const screen = blessed.screen({
     smartCSR: true,
-    title: 'ANI-ME-CLI',
+    title: 'ANI-ME-CLI — Anime in Your Terminal',
     fullUnicode: true,
     dockBorders: true,
     style: { bg: COLORS.bg },
@@ -39,6 +39,8 @@ export function createLayout() {
   let breadcrumbParts = null;
 
   function renderHeader() {
+    const w = screen.width || 80;
+
     if (breadcrumbParts && breadcrumbParts.length > 0) {
       // Breadcrumb mode: ★ ANI-ME-CLI ▸ Naruto ▸ EP 01 [SUB]
       const logo = `{bold}{${COLORS.accent}-fg}${BOX.star} ANI-ME-CLI{/}`;
@@ -47,17 +49,22 @@ export function createLayout() {
       ).join('  ');
       header.setContent(`  ${logo}  ${crumbs}`);
     } else {
-      // Tab mode
-      const logo = `{bold}{${COLORS.accent}-fg}${BOX.star} ANI-ME-CLI{/}`;
+      // Tab mode with richer styling
+      const logo = `{bold}{${COLORS.accent}-fg}${BOX.star}{/} {bold}{${COLORS.grad1}-fg}A{${COLORS.grad2}-fg}N{${COLORS.grad3}-fg}I{/}{${COLORS.textDim}-fg}-{/}{bold}{${COLORS.grad2}-fg}M{${COLORS.grad3}-fg}E{/}{${COLORS.textDim}-fg}-{/}{bold}{${COLORS.grad4}-fg}C{${COLORS.grad3}-fg}L{${COLORS.grad2}-fg}I{/}`;
       const tabs = ['home', 'search'].map(t => {
+        const icons = { home: BOX.diamond, search: BOX.bullet };
         const label = t.charAt(0).toUpperCase() + t.slice(1);
         if (t === activeTab) {
-          return `{${COLORS.accent}-bg}{#000-fg}{bold} ${label} {/}`;
+          return `{${COLORS.accent}-bg}{#000-fg}{bold} ${icons[t]} ${label} {/}`;
         }
-        return `{${COLORS.textMuted}-fg} ${label} {/}`;
+        return `{${COLORS.textMuted}-fg} ${icons[t]} ${label} {/}`;
       }).join('  ');
 
-      header.setContent(`  ${logo}                              ${tabs}`);
+      // Right-align version
+      const version = `{${COLORS.textMuted}-fg}v1.0{/}`;
+      const spacer = ' '.repeat(Math.max(1, w - 50));
+
+      header.setContent(`  ${logo}  ${BOX.v}  ${tabs}${spacer}${version} `);
     }
   }
 
@@ -79,11 +86,19 @@ export function createLayout() {
     left: 0,
     width: '100%',
     height: '100%-6',
+    scrollable: true,
+    alwaysScroll: true,
+    scrollbar: {
+      ch: '▐',
+      style: { bg: COLORS.accentDim },
+    },
     style: {
       fg: COLORS.text,
       bg: COLORS.bg,
     },
     tags: true,
+    keys: true,
+    mouse: true,
   });
 
   // ─── Status Bar ────────────────────────────────────────────────
@@ -111,7 +126,7 @@ export function createLayout() {
    */
   function formatStatusHints(hints) {
     return '  ' + hints.map(([key, label]) =>
-      `{${COLORS.accent}-fg}{bold}${key}{/} {${COLORS.textDim}-fg}${label}{/}`
+      `{${COLORS.accent}-fg}{bold}[${key}]{/} {${COLORS.textDim}-fg}${label}{/}`
     ).join(`  {${COLORS.borderDim}-fg}${BOX.v}{/}  `);
   }
 
@@ -127,6 +142,12 @@ export function createLayout() {
   screen.key(['q', 'C-c'], () => {
     screen.destroy();
     process.exit(0);
+  });
+
+  // Handle resize
+  screen.on('resize', () => {
+    renderHeader();
+    screen.render();
   });
 
   // Initialize header
