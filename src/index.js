@@ -5,6 +5,11 @@
 // Manages navigation stack and screen lifecycle.
 // Screens: Home → Search → Detail → Player
 
+// Force truecolor mode to prevent neo-blessed from using the 256-color palette,
+// which gets overwritten by Sixel graphics in many terminal emulators (like Windows Terminal),
+// causing text to become black or invisible after resizing or drawing images.
+process.env.COLORTERM = 'truecolor';
+
 import { createLayout } from './ui/layout.js';
 import { showHomeScreen } from './ui/home.js';
 import { showSearchScreen } from './ui/search.js';
@@ -124,6 +129,52 @@ const layout = createLayout();
 // 'r' to refresh current screen
 layout.screen.key(['r'], () => {
   navigate(currentScreen, currentData);
+});
+
+// ─── Resize Handler (Gemini CLI approach: full re-render) ────────
+// Instead of patching positions on resize, completely rebuild the
+// current screen from scratch with the new terminal dimensions.
+// This mirrors the Gemini CLI's React/Ink pattern where a terminal
+// size change triggers a full component tree re-render.
+let resizeTimer = null;
+layout.screen.on('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    if (!currentScreen) return;
+
+    // Clean up existing key listeners to prevent stacking
+    cleanupKeyListeners(layout.screen);
+
+    // Full terminal wipe to clear any raw pixel artifacts
+    // (chafa images write directly to stdout, bypassing blessed)
+    console.clear();
+    process.stdout.write('\x1b[2J\x1b[3J\x1b[H');
+    
+    // Force blessed to redraw its entire internal buffer to the physical screen
+    // by marking all lines as dirty.
+    if (layout.screen.lines) {
+      layout.screen.lines.forEach(line => { line.dirty = true; });
+    }
+
+    // Re-render current screen preserving state
+    switch (currentScreen) {
+      case 'home':
+        // Use fromBack: true to rebuild from cached data (no re-fetch)
+        showHomeScreen(layout, navigate, { fromBack: true });
+        break;
+      case 'search':
+        showSearchScreen(layout, navigate, currentData);
+        break;
+      case 'detail':
+        showDetailScreen(layout, navigate, currentData);
+        break;
+      case 'player':
+        showPlayerScreen(layout, navigate, currentData);
+        break;
+      default:
+        showHomeScreen(layout, navigate);
+    }
+  }, 150); // 150ms debounce prevents rebuild storms during active dragging
 });
 
 // ─── Startup ─────────────────────────────────────────────────────

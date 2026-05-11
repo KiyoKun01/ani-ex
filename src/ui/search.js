@@ -8,8 +8,7 @@ import {
   createSectionHeader, formatAnimeCard,
   renderModeToggle, renderGenreTags,
 } from './components.js';
-import { search } from '../api/allanime.js';
-
+import { search } from '../api/provider.js';
 /**
  * Show the search screen
  */
@@ -205,6 +204,8 @@ export async function showSearchScreen(layout, navigate, initialData = {}) {
         subEpisodes: anime.subEpisodes,
         dubEpisodes: anime.dubEpisodes,
         mode: currentMode,
+        searchQuery: currentQuery,
+        providerName: anime._provider,
       });
     }
   });

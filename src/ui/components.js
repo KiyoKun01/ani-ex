@@ -110,10 +110,21 @@ function formatAnimeCard(anime, index, isSelected = false) {
  * Format a styled episode list item
  */
 function formatEpisodeItem(epNum, index) {
-  const padded = String(epNum).padStart(4, ' ');
+  // Handle both plain numbers/strings AND episode objects from the provider layer
+  let num, title;
+  if (typeof epNum === 'object' && epNum !== null) {
+    num = epNum.episodeString || epNum.number || String(index + 1);
+    title = epNum.title || '';
+  } else {
+    num = epNum;
+    title = '';
+  }
+
+  const padded = String(num).padStart(4, ' ');
   const isEven = index % 2 === 0;
   const prefix = isEven ? `{${COLORS.accent}-fg}${BOX.bullet}{/}` : `{${COLORS.accentDim}-fg}${BOX.dot}{/}`;
-  return `  ${prefix} {${COLORS.textBright}-fg}Episode ${padded}{/}`;
+  const titleStr = title ? `  {${COLORS.textDim}-fg}${title.length > 35 ? title.slice(0, 32) + '...' : title}{/}` : '';
+  return `  ${prefix} {${COLORS.textBright}-fg}Episode ${padded}{/}${titleStr}`;
 }
 
 // ─── Stream Quality Item ─────────────────────────────────────────

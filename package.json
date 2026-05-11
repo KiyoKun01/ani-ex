@@ -4,6 +4,9 @@
   "description": "Anime website-style TUI for watching anime in the terminal",
   "main": "src/index.js",
   "type": "module",
+  "bin": {
+    "anime-cli": "src/index.js"
+  },
   "scripts": {
     "start": "node src/index.js",
     "dev": "node --watch src/index.js"
@@ -16,7 +19,9 @@
   ],
   "license": "MIT",
   "dependencies": {
+    "@consumet/extensions": "^1.8.8",
     "chalk": "^5.3.0",
+    "cheerio": "^1.2.0",
     "neo-blessed": "^0.2.0",
     "open": "^10.1.0"
   }

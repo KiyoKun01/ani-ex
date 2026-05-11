@@ -4,8 +4,9 @@
 
 import blessed from 'neo-blessed';
 import { COLORS, BOX, createLoadingSpinner } from './components.js';
-import { getHomeData } from '../api/mal.js';
-import { renderImage, renderImageSync } from '../utils/image.js';
+import { getHomeData } from '../api/jikan.js';
+import { renderImage } from '../utils/image.js';
+import { search } from '../api/hianime.js';
 // ─── Constants ───────────────────────────────────────────────────
 const ACCENT_COLORS = [
   '#e879f9', '#c084fc', '#a78bfa', '#818cf8', '#38bdf8',
@@ -101,68 +102,52 @@ function paintAllImages() {
   clearTimeout(renderTimer);
   renderTimer = setTimeout(() => {
     const prog = currentScreen.program;
-    const sysTop = 3;                           // rows occupied by header
-    const sysBottom = currentScreen.height - 3;   // rows before status bar
+    const rows = currentScreen.height;
+    const cols = currentScreen.width;
+    const sysTop = 3;
+    const sysBottom = rows - 3;
 
     for (const img of activeImages) {
       if (!img.art) continue;
 
       const lpos = img.box.lpos;
+      if (!lpos) continue;
 
       const parentCard = img.box.parent;
       if (parentCard && parentCard.hidden) continue;
 
+      const trueAbsTop = lpos.yi;
+      const trueAbsLeft = lpos.xi;
+
+      // Vertical bounds: Sixel cannot be easily clipped. If we draw an image
+      // that extends past the physical bottom of the terminal, Windows Terminal
+      // will scroll the buffer, which corrupts absolute cursor positioning for
+      // everything drawn afterwards (the staircase effect).
+      // Also prevent Sixel from drawing over the header/footer text.
+      if (trueAbsTop < sysTop || trueAbsTop + img.h > sysBottom) continue;
+
       const contentBox = parentCard ? parentCard.parent : null;
-      
-      // Fallback if we cannot mathematically compute coordinates
-      let trueAbsTop = lpos ? lpos.yi : null;
-      let trueAbsLeft = lpos ? lpos.xi : null;
-
-      if (contentBox && parentCard.top !== undefined && typeof contentBox.getScroll === 'function') {
-        const contentSysTop = contentBox.lpos ? contentBox.lpos.yi : sysTop;
-        const scrollY = contentBox.getScroll();
-        const parsedTop = parseInt(parentCard.top, 10);
-        if (!isNaN(parsedTop)) {
-          const trueCardY = contentSysTop + parsedTop - scrollY;
-          trueAbsTop = trueCardY + 1; // +1 for card's top border
-        }
+      let minX = 0, maxX = cols;
+      if (contentBox && contentBox.lpos) {
+        minX = contentBox.lpos.xi;
+        maxX = contentBox.lpos.xl;
       }
 
-      if (parentCard.left !== undefined) {
-        const contentSysLeft = contentBox && contentBox.lpos ? contentBox.lpos.xi : 0;
-        const parsedLeft = parseInt(parentCard.left, 10);
-        if (!isNaN(parsedLeft)) {
-          const trueCardX = contentSysLeft + parsedLeft;
-          trueAbsLeft = trueCardX + 1; // +1 for card's left border
-        }
-      }
-
-      const carouselContainer = contentBox; // e.g. trendContainer or latestContainer
-      let minX = 0, maxX = currentScreen.width;
-
-      if (carouselContainer && carouselContainer.lpos) {
-        minX = carouselContainer.lpos.xi;
-        maxX = carouselContainer.lpos.xl;
-      }
-
-      // If mathematically unresolved, safely skip rendering
-      if (trueAbsTop === null || trueAbsLeft === null) continue;
-
-      // Horizontal bounds checking against layout structures to prevent overlapping
       if (trueAbsLeft < minX || trueAbsLeft + 14 > maxX) continue;
 
-      const lines = img.art.split('\n');
-      const maxH = Math.min(lines.length, img.h);
+      // Use raw escape sequences to bypass blessed entirely:
+      // 1. Position cursor at image origin (1-based for VT)
+      // 2. Write Sixel data
+      const vtRow = trueAbsTop + 1;  // VT100 is 1-based
+      const vtCol = trueAbsLeft + 1;
+      
+      // Save cursor, position, write Sixel, restore cursor
+      prog._write('\x1b7' + `\x1b[${vtRow};${vtCol}H` + img.art + '\x1b8');
 
-      for (let i = 0; i < maxH; i++) {
-        const renderY = trueAbsTop + i;
-        if (renderY < sysTop || renderY >= sysBottom) continue;
-
-        prog.cursorPos(renderY, trueAbsLeft);
-        prog._write('\x1b[0m' + lines[i] + '\x1b[0m');
-      }
+      prog.x = -1;
+      prog.y = -1;
     }
-  }, 30); // 30ms debounce prevents Sixel rendering lockups
+  }, 30);
 }
 
 // ─── Anime Card ──────────────────────────────────────────────────
@@ -215,7 +200,10 @@ function makeCards(parent, top, items, colorOffset, isLatest, screen, startX = 4
     });
 
     if (anime.imageUrl) {
-      renderImage(anime.imageUrl, { width: posterW, height: posterH }).then(art => {
+      // Pass posterH - 1 to chafa to give a 1-row safety margin. 
+      // Sixel images can sometimes round up in pixel height and spill into the 
+      // text row beneath them, erasing character cells (like 'e' or 'a').
+      renderImage(anime.imageUrl, { width: posterW, height: posterH - 1 }).then(art => {
         if (!art || art.includes('No Image')) return;
         activeImages.push({ box: posterBox, art, h: posterH });
         screen.render();
@@ -245,6 +233,8 @@ export async function showHomeScreen(layout, navigate, data = {}) {
   let tStartIndex = 0, lStartIndex = 0;
   let homeData = { spotlight: null, trending: [], latest: [] };
   let spotBox = null, tCards = [], lCards = [];
+  let trendContainer = null, latestContainer = null;
+  let tDivider = null, lDivider = null;
 
   // Restore state if returning from another screen
   if (data.fromBack && cachedState) {
@@ -350,7 +340,8 @@ export async function showHomeScreen(layout, navigate, data = {}) {
     });
 
     if (spotlight.imageUrl) {
-      renderImage(spotlight.imageUrl, { width: posterW, height: posterH }).then(art => {
+      // Pass posterH - 1 to chafa to give a 1-row safety margin.
+      renderImage(spotlight.imageUrl, { width: posterW, height: posterH - 1 }).then(art => {
         if (!art || art.includes('No Image')) return;
         activeImages.push({ box: posterBox, art, h: posterH });
         screen.render();
@@ -360,14 +351,14 @@ export async function showHomeScreen(layout, navigate, data = {}) {
 
   // ─── Trending Section (Right side in Row 1) ──────────────────────
   if (trending.length > 0) {
-    blessed.box({
+    tDivider = blessed.box({
       parent: content, top: yOffset, left: trendX,
       width: trendAvailW, height: 1, tags: true,
       style: { bg: COLORS.bg },
       content: sectionDivider(`TRENDING NOW (${trending.length})`, trendAvailW),
     });
 
-    const trendContainer = blessed.box({
+    trendContainer = blessed.box({
       parent: content, top: yOffset + 1, left: trendX,
       width: trendAvailW, height: CARD_H, tags: false
     });
@@ -382,14 +373,14 @@ export async function showHomeScreen(layout, navigate, data = {}) {
 
   // ─── Row 2: Latest Releases ──────────────────────────────────────
   if (latest.length > 0) {
-    blessed.box({
+    lDivider = blessed.box({
       parent: content, top: yOffset, left: 1,
       width: contentW - 2, height: 1, tags: true,
       style: { bg: COLORS.bg },
       content: sectionDivider(`LATEST RELEASES (${latest.length})`, contentW - 2),
     });
 
-    const latestContainer = blessed.box({
+    latestContainer = blessed.box({
       parent: content, top: yOffset + 1, left: 0,
       width: contentW, height: CARD_H, tags: false
     });
@@ -419,11 +410,27 @@ export async function showHomeScreen(layout, navigate, data = {}) {
       spotBox.style.border.fg = sec === 0 ? COLORS.accent : COLORS.border;
     }
 
+    // Dynamic width recalculation
+    const currentSpotW = spotlight ? 42 : 0;
+    const currentTrendX = spotlight ? 4 + currentSpotW + 2 : 4;
+    const dynamicTrendAvailW = Math.max(20, termW - currentTrendX - 2);
+
+    if (trendContainer) trendContainer.width = dynamicTrendAvailW;
+    if (latestContainer) latestContainer.width = termW;
+    if (tDivider) {
+      tDivider.width = dynamicTrendAvailW;
+      tDivider.setContent(sectionDivider(`TRENDING NOW (${trending.length})`, dynamicTrendAvailW));
+    }
+    if (lDivider) {
+      lDivider.width = termW - 2;
+      lDivider.setContent(sectionDivider(`LATEST RELEASES (${latest.length})`, termW - 2));
+    }
+
     // Trending carousal
     if (tCards.length > 0) {
       const cardBlock = CARD_W + CARD_GAP;
-      const visibleCount = Math.floor((trendAvailW + CARD_GAP) / cardBlock);
-      const tPadding = Math.max(0, Math.floor((trendAvailW - (visibleCount * cardBlock - CARD_GAP)) / 2));
+      const visibleCount = Math.floor((dynamicTrendAvailW + CARD_GAP) / cardBlock);
+      const tPadding = Math.max(0, Math.floor((dynamicTrendAvailW - (visibleCount * cardBlock - CARD_GAP)) / 2));
 
       if (ci[1] < tStartIndex) tStartIndex = ci[1];
       else if (ci[1] >= tStartIndex + visibleCount) tStartIndex = ci[1] - visibleCount + 1;
@@ -434,7 +441,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
 
       tCards.forEach((b, i) => {
         b.left = tPadding + (i - tStartIndex) * cardBlock;
-        if (b.left < 0 || b.left + CARD_W > trendAvailW) {
+        if (b.left < 0 || b.left + CARD_W > dynamicTrendAvailW) {
           b.hide();
         } else {
           b.show();
@@ -546,25 +553,56 @@ export async function showHomeScreen(layout, navigate, data = {}) {
     updateSelection();
   });
 
-  screen.key(['enter'], () => {
+  let isNavigating = false;
+
+  screen.key(['enter'], async () => {
+    if (isNavigating) return;
+
     let anime;
     if (sec === 0) anime = spotlight;
     else if (sec === 1) anime = trending[ci[1]];
     else anime = latest[ci[2]];
 
     if (anime) {
-      cleanupHome();
       if (anime.id) {
+        cleanupHome();
         // Latest items already have an AllAnime ID, navigate directly to details
         navigate('detail', { showId: anime.id, animeName: anime.name, mode: 'sub' });
       } else {
-        // Spotlight/Trending only have MAL IDs, so we must rely on a text search
-        navigate('search', { query: anime.name, mode: 'sub' });
+        isNavigating = true;
+        const spinner = createLoadingSpinner(content, 'Resolving stream data...');
+        screen.render();
+        
+        try {
+          // Auto-resolve MAL title to AllAnime showId
+          const results = await search(anime.name, 'sub');
+          spinner.destroy();
+          cleanupHome();
+          
+          if (results && results.length > 0) {
+            const match = results[0];
+            navigate('detail', { 
+              showId: match.id, 
+              animeName: match.name, 
+              subEpisodes: match.subEpisodes, 
+              dubEpisodes: match.dubEpisodes, 
+              mode: 'sub' 
+            });
+          } else {
+            // Fallback to search screen if no direct match found
+            navigate('search', { query: anime.name, mode: 'sub' });
+          }
+        } catch (err) {
+          spinner.destroy();
+          cleanupHome();
+          navigate('search', { query: anime.name, mode: 'sub' });
+        }
       }
     }
   });
 
   screen.key(['/'], () => {
+    if (isNavigating) return;
     cleanupHome();
     navigate('search', {});
   });

@@ -7,7 +7,7 @@ import {
   createLoadingSpinner, createErrorBox,
   createSectionHeader, formatStreamItem,
 } from './components.js';
-import { getPlayableStreams } from '../api/allanime.js';
+import { getPlayableStreams } from '../api/provider.js';
 import { launchPlayer } from '../utils/player.js';
 
 /**
@@ -50,7 +50,7 @@ export async function showPlayerScreen(layout, navigate, data = {}) {
   screen.render();
 
   try {
-    const streams = await getPlayableStreams(data.showId, String(data.episodeNumber), data.mode || 'sub');
+    const streams = await getPlayableStreams(data.showId, String(data.episodeNumber), data.mode || 'sub', data.providerName, data.consumetId);
     spinner.destroy();
 
     if (streams.length === 0) {
@@ -151,6 +151,7 @@ export async function showPlayerScreen(layout, navigate, data = {}) {
         await launchPlayer(selected.url, title, {
           referer: selected.referer || null,
           subtitleUrl: selected.subtitleUrl || null,
+          subtitles: selected.subtitles || null,
           type: selected.type,
         });
 

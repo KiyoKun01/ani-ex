@@ -7,7 +7,7 @@ import {
   createLoadingSpinner, createErrorBox,
   formatEpisodeItem, renderModeToggle, createSectionHeader,
 } from './components.js';
-import { getEpisodeList } from '../api/allanime.js';
+import { getEpisodeList } from '../api/provider.js';
 import { renderImage } from '../utils/image.js';
 
 // ─── Image Caching Context ───────────────────────────────────────
@@ -222,9 +222,9 @@ export async function showDetailScreen(layout, navigate, data = {}) {
     screen.render();
 
     try {
-      const result = await getEpisodeList(data.showId, currentMode);
-      episodes = result.episodes;
-      animeMeta = result.meta;
+      const result = await getEpisodeList(data.showId, currentMode, data.providerName);
+      episodes = result.episodes || result;
+      animeMeta = result.meta || data;
       
       renderInfoCard();
       spinner.destroy();
@@ -262,6 +262,8 @@ export async function showDetailScreen(layout, navigate, data = {}) {
     const match = text.match(/Episode\s+([\d.]+)/);
     if (!match) return;
 
+    const selectedEp = episodes[index] || {};
+
     cleanupDetail();
     navigate('player', {
       showId: data.showId,
@@ -270,6 +272,8 @@ export async function showDetailScreen(layout, navigate, data = {}) {
       mode: currentMode,
       subEpisodes: data.subEpisodes,
       dubEpisodes: data.dubEpisodes,
+      providerName: selectedEp._provider || data.providerName,
+      consumetId: selectedEp._consumetId || null
     });
   });
 

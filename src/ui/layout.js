@@ -16,6 +16,7 @@ export function createLayout() {
     title: 'ANI-ME-CLI — Anime in Your Terminal',
     fullUnicode: true,
     dockBorders: true,
+    resizeTimeout: 300,
     style: { bg: COLORS.bg },
   });
 
@@ -139,15 +140,15 @@ export function createLayout() {
   }
 
   // ─── Global Keybindings ────────────────────────────────────────
-  screen.key(['q', 'C-c'], () => {
+  screen.key(['q', 'C-c'], async () => {
     screen.destroy();
     process.exit(0);
   });
 
-  // Handle resize
+  // Handle resize — only update header content here;
+  // the global resize handler in index.js manages the full re-render
   screen.on('resize', () => {
     renderHeader();
-    screen.render();
   });
 
   // Initialize header

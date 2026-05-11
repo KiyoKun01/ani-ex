@@ -1,18 +1,16 @@
 // ─── Video Player Launcher ───────────────────────────────────────
-// Launches anime episodes via mpv or browser fallback
-// Supports --referrer and --sub-file for AllAnime streams
+// Launches anime episodes via mpv (default) or VLC (fallback)
+// Supports --referrer and subtitle tracks for AnimeKai streams
 
 import { execSync, exec } from 'child_process';
-import fs from 'fs';
 import path from 'path';
-import open from 'open';
 
 /**
- * Check if mpv is installed
+ * Check if a command exists on the system
  */
-function hasMpv() {
+function hasCommand(cmd) {
   try {
-    execSync('mpv --version', { stdio: 'ignore' });
+    execSync(`where ${cmd}`, { stdio: 'ignore' });
     return true;
   } catch {
     return false;
@@ -20,37 +18,67 @@ function hasMpv() {
 }
 
 /**
+ * Detect available player: mpv > vlc > none
+ */
+function detectPlayer() {
+  if (hasCommand('mpv')) return 'mpv';
+  if (hasCommand('vlc')) return 'vlc';
+  return null;
+}
+
+/**
  * Launch video playback
  * @param {string} streamUrl - Streaming URL (m3u8 or mp4)
  * @param {string} title - Episode title for display
- * @param {object} options - { referer, subtitleUrl, type }
+ * @param {object} options - { referer, subtitleUrl, subtitles, type, preferredPlayer }
+ *   - subtitles: Array of {url, lang} from provider (AnimeKai sends these)
+ *   - preferredPlayer: 'mpv' | 'vlc' (override auto-detect)
  */
 export async function launchPlayer(streamUrl, title = 'Anime Episode', options = {}) {
-  if (hasMpv()) {
+  const player = options.preferredPlayer || detectPlayer();
+
+  if (player === 'mpv') {
     return launchMpv(streamUrl, title, options);
+  } else if (player === 'vlc') {
+    return launchVlc(streamUrl, title, options);
   } else {
-    return launchBrowser(streamUrl, title, options);
+    throw new Error('No video player found. Install mpv (recommended) or VLC.');
   }
 }
 
 /**
- * Launch video in mpv player
+ * Launch video in mpv player (default)
  */
 function launchMpv(streamUrl, title, options = {}) {
-  const args = [`"${streamUrl}"`, `--title="${title}"`];
+  const args = [
+    `"${streamUrl}"`,
+    `--title="${title}"`,
+    '--force-window=yes',
+    '--keep-open=yes',
+  ];
 
-  // Add referrer header if present (required for m3u8 streams)
+  // Add referrer header (required for m3u8 streams from AnimeKai/MegaUp)
   if (options.referer) {
     args.push(`--http-header-fields="Referer: ${options.referer}"`);
     args.push(`--referrer="${options.referer}"`);
   }
 
-  // Add subtitle track if available
+  // Add subtitle track if a single URL is provided
   if (options.subtitleUrl) {
     args.push(`--sub-file="${options.subtitleUrl}"`);
   }
 
-  // Force demuxer for m3u8
+  // Add multiple subtitle tracks from provider (AnimeKai returns these)
+  if (options.subtitles && Array.isArray(options.subtitles)) {
+    const englishSub = options.subtitles.find(s =>
+      s.lang?.toLowerCase().includes('english') && s.kind !== 'thumbnails'
+    );
+    if (englishSub) {
+      args.push(`--sub-file="${englishSub.url}"`);
+    }
+  }
+
+  // Force HLS demuxer for m3u8
   if (options.type === 'm3u8' || streamUrl.includes('.m3u8')) {
     args.push('--demuxer-lavf-format=hls');
   }
@@ -63,70 +91,39 @@ function launchMpv(streamUrl, title, options = {}) {
 }
 
 /**
- * Launch video in browser with HTML5 player (fallback)
+ * Launch video in VLC player (fallback)
  */
-async function launchBrowser(streamUrl, title, options = {}) {
-  const subtitleTrack = options.subtitleUrl
-    ? `<track kind="captions" src="${options.subtitleUrl}" srclang="en" label="English" default>`
-    : '';
+function launchVlc(streamUrl, title, options = {}) {
+  const args = [
+    `"${streamUrl}"`,
+    `--meta-title="${title}"`,
+  ];
 
-  const html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>${title} — ANI-ME-CLI</title>
-  <link href="https://cdn.jsdelivr.net/npm/hls.js@1/dist/hls-ui.css" rel="stylesheet">
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #0a0a0f;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      font-family: 'Segoe UI', sans-serif;
-    }
-    h1 {
-      color: #e879f9;
-      margin-bottom: 16px;
-      font-size: 1.2rem;
-      letter-spacing: 1px;
-    }
-    video {
-      width: 90vw;
-      max-width: 960px;
-      background: #000;
-      border-radius: 8px;
-    }
-  </style>
-</head>
-<body>
-  <h1>▶ ${title}</h1>
-  <video id="player" controls>
-    ${subtitleTrack}
-  </video>
-  <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
-  <script>
-    const video = document.getElementById('player');
-    const url = '${streamUrl}';
-    if (url.includes('.m3u8') && Hls.isSupported()) {
-      const hls = new Hls();
-      hls.loadSource(url);
-      hls.attachMedia(video);
-    } else {
-      video.src = url;
-    }
-  </script>
-</body>
-</html>`;
+  // Add referrer for m3u8 streams
+  if (options.referer) {
+    args.push(`--http-referrer="${options.referer}"`);
+  }
 
-  const filePath = path.join(process.cwd(), 'videoPlayer.html');
-  fs.writeFileSync(filePath, html);
-  await open(filePath);
+  // Add subtitle track
+  if (options.subtitleUrl) {
+    args.push(`--sub-file="${options.subtitleUrl}"`);
+  }
 
-  return { player: 'browser', path: filePath };
+  // Add English subtitle from provider subtitles array
+  if (options.subtitles && Array.isArray(options.subtitles)) {
+    const englishSub = options.subtitles.find(s =>
+      s.lang?.toLowerCase().includes('english') && s.kind !== 'thumbnails'
+    );
+    if (englishSub) {
+      args.push(`--sub-file="${englishSub.url}"`);
+    }
+  }
+
+  const cmd = `vlc ${args.join(' ')}`;
+  const child = exec(cmd, { detached: true, stdio: 'ignore' });
+  child.unref();
+
+  return { player: 'vlc', pid: child.pid };
 }
 
 export default { launchPlayer };
