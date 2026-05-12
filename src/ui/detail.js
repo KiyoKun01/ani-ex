@@ -1,5 +1,5 @@
 // ─── Anime Detail Screen ─────────────────────────────────────────
-// Rich info panel + styled episode list from AllAnime
+// Rich info panel + styled episode list from AnimePahe
 
 import blessed from 'neo-blessed';
 import {

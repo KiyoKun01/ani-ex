@@ -6,7 +6,7 @@ import blessed from 'neo-blessed';
 import { COLORS, BOX, createLoadingSpinner } from './components.js';
 import { getHomeData } from '../api/jikan.js';
 import { renderImage } from '../utils/image.js';
-import { search } from '../api/hianime.js';
+import { search } from '../api/provider.js';
 // ─── Constants ───────────────────────────────────────────────────
 const ACCENT_COLORS = [
   '#e879f9', '#c084fc', '#a78bfa', '#818cf8', '#38bdf8',
@@ -20,7 +20,7 @@ const GRADIENT_COLORS = ['#e879f9', '#d946ef', '#c026d3', '#a855f7', '#8b5cf6', 
 
 // ─── Tips ────────────────────────────────────────────────────────
 const TIPS = [
-  'Press / anywhere to quick-search anime on AllAnime',
+  'Press / anywhere to quick-search anime on AnimePahe',
   'Use arrow keys to browse, Enter to select',
   'Press Tab to toggle SUB/DUB mode in episode view',
   'Press r to refresh the current screen',
@@ -271,7 +271,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
         `  {${COLORS.textDim}-fg}Could not reach MyAnimeList / Jikan API.{/}`,
         `  {${COLORS.textDim}-fg}Check your internet connection.{/}`,
         '',
-        `  {${COLORS.textMuted}-fg}Press {bold}{${COLORS.accent}-fg}/{/}{${COLORS.textMuted}-fg} to search manually on AllAnime{/}`,
+        `  {${COLORS.textMuted}-fg}Press {bold}{${COLORS.accent}-fg}/{/}{${COLORS.textMuted}-fg} to search manually on AnimePahe{/}`,
       ].join('\n'),
     });
     screen.key(['/'], () => {
@@ -397,7 +397,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
     style: { bg: COLORS.bg },
     content: [
       `{center}{${COLORS.borderDim}-fg}${BOX.h.repeat(Math.max(10, contentW - 16))}{/}{/center}`,
-      `{center}{${COLORS.textMuted}-fg}Powered by Jikan + AllAnime  ${BOX.dot}  ${new Date().toLocaleTimeString()}{/}{/center}`,
+      `{center}{${COLORS.textMuted}-fg}Powered by Jikan + AnimePahe  ${BOX.dot}  ${new Date().toLocaleTimeString()}{/}{/center}`,
     ].join('\n'),
   });
 
@@ -574,7 +574,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
         screen.render();
         
         try {
-          // Auto-resolve MAL title to AllAnime showId
+          // Auto-resolve MAL title to AnimePahe showId
           const results = await search(anime.name, 'sub');
           spinner.destroy();
           cleanupHome();

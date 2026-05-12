@@ -1,5 +1,5 @@
 // ─── Search Screen ───────────────────────────────────────────────
-// Styled search bar + genre tags + rich result cards using AllAnime
+// Styled search bar + genre tags + rich result cards using AnimePahe
 
 import blessed from 'neo-blessed';
 import {
