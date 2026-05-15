@@ -4,7 +4,7 @@
 
 import blessed from 'neo-blessed';
 import { COLORS, BOX, createLoadingSpinner } from './components.js';
-import { getHomeData } from '../api/jikan.js';
+import { getHomeData } from '../api/provider.js';
 import { renderImage } from '../utils/image.js';
 import { search } from '../api/provider.js';
 // ─── Constants ───────────────────────────────────────────────────
@@ -73,10 +73,12 @@ function sectionDivider(title, w) {
 const activeImages = [];
 let currentScreen = null;
 let renderTimer = null;
+let spotlightTimer = null;
 let cachedState = null;
 
 function cleanupHome() {
   clearTimeout(renderTimer);
+  clearInterval(spotlightTimer);
   activeImages.length = 0;
   if (currentScreen) {
     currentScreen.removeListener('render', paintAllImages);
@@ -231,7 +233,8 @@ export async function showHomeScreen(layout, navigate, data = {}) {
   // State variables
   let sec = 0, ci = [0, 0, 0];
   let tStartIndex = 0, lStartIndex = 0;
-  let homeData = { spotlight: null, trending: [], latest: [] };
+  let homeData = { spotlights: [], trending: [], latest: [] };
+  let spotlightIndex = 0;
   let spotBox = null, tCards = [], lCards = [];
   let trendContainer = null, latestContainer = null;
   let tDivider = null, lDivider = null;
@@ -243,6 +246,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
     tStartIndex = cachedState.tStartIndex;
     lStartIndex = cachedState.lStartIndex;
     homeData = cachedState.homeData;
+    spotlightIndex = cachedState.spotlightIndex || 0;
   } else {
     // ─── Loading ───────────────────────────────────────────────────
     const spinner = createLoadingSpinner(content, 'Fetching fresh anime data...');
@@ -256,10 +260,10 @@ export async function showHomeScreen(layout, navigate, data = {}) {
     spinner.destroy();
   }
 
-  const { spotlight, trending, latest } = homeData;
+  const { spotlights, trending, latest } = homeData;
 
   // ─── Fallback if no data ───────────────────────────────────────
-  if (!spotlight && trending.length === 0) {
+  if ((!spotlights || spotlights.length === 0) && trending.length === 0) {
     blessed.box({
       parent: content, top: 'center', left: 'center',
       width: 60, height: 9, tags: true, border: 'line',
@@ -268,7 +272,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
         '',
         `  {${COLORS.error}-fg}{bold}${BOX.cross2} Connection Failed{/}`,
         '',
-        `  {${COLORS.textDim}-fg}Could not reach MyAnimeList / Jikan API.{/}`,
+        `  {${COLORS.textDim}-fg}Could not reach AnimePahe API.{/}`,
         `  {${COLORS.textDim}-fg}Check your internet connection.{/}`,
         '',
         `  {${COLORS.textMuted}-fg}Press {bold}{${COLORS.accent}-fg}/{/}{${COLORS.textMuted}-fg} to search manually on AnimePahe{/}`,
@@ -284,12 +288,12 @@ export async function showHomeScreen(layout, navigate, data = {}) {
 
   let yOffset = 0;
   const marginL = 4;
-  const spotW = spotlight ? 42 : 0;
-  const trendX = spotlight ? marginL + spotW + 2 : marginL;
+  const spotW = (spotlights && spotlights.length > 0) ? 42 : 0;
+  const trendX = (spotlights && spotlights.length > 0) ? marginL + spotW + 2 : marginL;
   const trendAvailW = Math.max(20, contentW - trendX - 2);
 
   // ─── Row 1: Spotlight (Left) + Trending (Right) ──────────────────
-  if (spotlight) {
+  if (spotlights && spotlights.length > 0) {
     blessed.box({
       parent: content, top: yOffset, left: marginL,
       width: spotW, height: 1, tags: true,
@@ -319,33 +323,66 @@ export async function showHomeScreen(layout, navigate, data = {}) {
     });
 
     const infoW = spotW - posterW - 6;
-    const score = spotlight.score ? `${BOX.star} ${spotlight.score}` : '';
-    const type = spotlight.type || 'TV';
-    const status = spotlight.status ? spotlight.status.replace('Currently ', '') : '';
-    const meta = [score, type, status].filter(Boolean).join(`  {${COLORS.borderDim}-fg}${BOX.v}{/}  `);
-
-    blessed.box({
+    const infoBox = blessed.box({
       parent: spotBox,
       top: 0, left: posterW + 3,
       width: infoW, height: spotH - 2,
       tags: true,
-      style: { bg: COLORS.card },
-      content: [
-        `{bold}{${COLORS.textBright}-fg}${trunc(spotlight.name, infoW)}{/}`,
+      style: { bg: COLORS.card }
+    });
+
+    function updateSpotlightContent(index) {
+      const sp = spotlights[index];
+      if (!sp) return;
+      const score = sp.score ? `${BOX.star} ${sp.score}` : '';
+      const type = sp.type || 'TV';
+      const status = sp.status ? sp.status.replace('Currently ', '') : '';
+      const meta = [score, type, status].filter(Boolean).join(`  {${COLORS.borderDim}-fg}${BOX.v}{/}  `);
+
+      const dots = spotlights.map((_, i) => i === index ? '{bold}●{/}' : '○').join(' ');
+
+      infoBox.setContent([
+        `{bold}{${COLORS.textBright}-fg}${trunc(sp.name, infoW)}{/}`,
         '',
         `{${COLORS.rating}-fg}${meta}{/}`,
         '',
-        ...wrapText(spotlight.synopsis || '', infoW - 2).slice(0, 4).map(l => `{${COLORS.textDim}-fg}${l}{/}`),
-      ].filter(l => l !== undefined).join('\n'),
-    });
+        ...wrapText(sp.synopsis || '', infoW - 2).slice(0, 4).map(l => `{${COLORS.textDim}-fg}${l}{/}`),
+        '',
+        `{${COLORS.textMuted}-fg}${dots}{/}`
+      ].filter(l => l !== undefined).join('\n'));
 
-    if (spotlight.imageUrl) {
-      // Pass posterH - 1 to chafa to give a 1-row safety margin.
-      renderImage(spotlight.imageUrl, { width: posterW, height: posterH - 1 }).then(art => {
-        if (!art || art.includes('No Image')) return;
-        activeImages.push({ box: posterBox, art, h: posterH });
+      // Clear previous spotlight image
+      const imgIdx = activeImages.findIndex(i => i.box === posterBox);
+      if (imgIdx > -1) activeImages.splice(imgIdx, 1);
+
+      if (sp.imageUrl) {
+        renderImage(sp.imageUrl, { width: posterW, height: posterH - 1 }).then(art => {
+          if (!art || art.includes('No Image')) return;
+          activeImages.push({ box: posterBox, art, h: posterH });
+          paintAllImages();
+        }).catch(() => { });
+      }
+      
+      // Also update the status bar if focus is on spotlight
+      if (sec === 0) {
+        setStatus([
+          ['↑↓', 'Spotlight'],
+          ['←→', 'Card'],
+          ['Enter', trunc(sp.name, 20)],
+          ['/', 'Search'],
+          ['q', 'Quit'],
+        ]);
+      }
+    }
+
+    updateSpotlightContent(spotlightIndex);
+
+    if (spotlights.length > 1) {
+      spotlightTimer = setInterval(() => {
+        spotlightIndex = (spotlightIndex + 1) % spotlights.length;
+        updateSpotlightContent(spotlightIndex);
         screen.render();
-      }).catch(() => { });
+      }, 7000);
     }
   }
 
@@ -367,7 +404,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
   }
 
   // Finalize Row 1 height if either Spotlight or Trending exists
-  if (spotlight || trending.length > 0) {
+  if ((spotlights && spotlights.length > 0) || trending.length > 0) {
     yOffset += CARD_H + 2; 
   }
 
@@ -397,7 +434,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
     style: { bg: COLORS.bg },
     content: [
       `{center}{${COLORS.borderDim}-fg}${BOX.h.repeat(Math.max(10, contentW - 16))}{/}{/center}`,
-      `{center}{${COLORS.textMuted}-fg}Powered by Jikan + AnimePahe  ${BOX.dot}  ${new Date().toLocaleTimeString()}{/}{/center}`,
+      `{center}{${COLORS.textMuted}-fg}Powered by AnimePahe  ${BOX.dot}  ${new Date().toLocaleTimeString()}{/}{/center}`,
     ].join('\n'),
   });
 
@@ -411,8 +448,8 @@ export async function showHomeScreen(layout, navigate, data = {}) {
     }
 
     // Dynamic width recalculation
-    const currentSpotW = spotlight ? 42 : 0;
-    const currentTrendX = spotlight ? 4 + currentSpotW + 2 : 4;
+    const currentSpotW = (spotlights && spotlights.length > 0) ? 42 : 0;
+    const currentTrendX = (spotlights && spotlights.length > 0) ? 4 + currentSpotW + 2 : 4;
     const dynamicTrendAvailW = Math.max(20, termW - currentTrendX - 2);
 
     if (trendContainer) trendContainer.width = dynamicTrendAvailW;
@@ -478,7 +515,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
     }
 
     const sectionNames = ['Spotlight', 'Trending', 'Latest'];
-    const currentItem = sec === 0 ? spotlight?.name : (sec === 1 ? trending[ci[1]]?.name : latest[ci[2]]?.name);
+    const currentItem = sec === 0 ? spotlights?.[spotlightIndex]?.name : (sec === 1 ? trending[ci[1]]?.name : latest[ci[2]]?.name);
     setStatus([
       ['↑↓', sectionNames[sec] || 'Navigate'],
       ['←→', 'Card'],
@@ -499,7 +536,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
 
     // Save state so we can return exactly where we left off
     cachedState = {
-      sec, ci: [...ci], tStartIndex, lStartIndex, homeData
+      sec, ci: [...ci], tStartIndex, lStartIndex, homeData, spotlightIndex
     };
 
     screen.render();
@@ -510,7 +547,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
   screen.key(['up'], () => {
     // Navigating up from Latest drops back to the last active Row 1 item
     if (sec === 2) {
-      sec = spotlight ? 0 : (trending.length > 0 ? 1 : 0);
+      sec = (spotlights && spotlights.length > 0) ? 0 : (trending.length > 0 ? 1 : 0);
     } else {
       sec = Math.max(0, sec - 1);
     }
@@ -531,7 +568,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
     if (sec === 1) { // Left inside Trending goes to Spotlight if possible
       if (ci[1] > 0) {
         ci[1]--;
-      } else if (spotlight) {
+      } else if (spotlights && spotlights.length > 0) {
         sec = 0;
       }
     } else if (sec === 2) {
@@ -559,7 +596,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
     if (isNavigating) return;
 
     let anime;
-    if (sec === 0) anime = spotlight;
+    if (sec === 0) anime = spotlights?.[spotlightIndex];
     else if (sec === 1) anime = trending[ci[1]];
     else anime = latest[ci[2]];
 

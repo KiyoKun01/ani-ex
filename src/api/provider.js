@@ -45,13 +45,21 @@ export async function getEpisodeList(showId, mode = 'sub', providerName = 'anime
   try {
     const info = await pahe.fetchAnimeInfo(showId);
     if (info?.episodes?.length > 0) {
-      const episodes = info.episodes.map((ep, i) => ({
-        episodeString: String(ep.number || i + 1),
-        title: ep.title,
-        number: ep.number || i + 1,
-        _consumetId: ep.id,
-        _provider: 'animepahe',
-      }));
+      let offset = 0;
+      if (info.episodes[0]?.number > 1) {
+        offset = info.episodes[0].number - 1;
+      }
+
+      const episodes = info.episodes.map((ep, i) => {
+        const relativeNum = ep.number !== undefined ? ep.number - offset : i + 1;
+        return {
+          episodeString: String(relativeNum),
+          title: ep.title,
+          number: relativeNum,
+          _consumetId: ep.id,
+          _provider: 'animepahe',
+        };
+      });
 
       const meta = {
         name: info.title,
@@ -100,8 +108,87 @@ export async function getPlayableStreams(showId, episodeString, mode = 'sub', pr
   return [];
 }
 
+export async function getHomeData() {
+  let latestRaw = [];
+  try {
+    const [p1, p2, p3, p4, p5, p6, p7, p8] = await Promise.all([
+      pahe.client.get(`${pahe.baseUrl}/api?m=airing&page=1`, { headers: pahe.Headers() }),
+      pahe.client.get(`${pahe.baseUrl}/api?m=airing&page=2`, { headers: pahe.Headers() }),
+      pahe.client.get(`${pahe.baseUrl}/api?m=airing&page=3`, { headers: pahe.Headers() }),
+      pahe.client.get(`${pahe.baseUrl}/api?m=airing&page=4`, { headers: pahe.Headers() }),
+      pahe.client.get(`${pahe.baseUrl}/api?m=airing&page=5`, { headers: pahe.Headers() }),
+      pahe.client.get(`${pahe.baseUrl}/api?m=airing&page=6`, { headers: pahe.Headers() }),
+      pahe.client.get(`${pahe.baseUrl}/api?m=airing&page=7`, { headers: pahe.Headers() }),
+      pahe.client.get(`${pahe.baseUrl}/api?m=airing&page=8`, { headers: pahe.Headers() })
+    ]);
+    
+    const raw = [
+      ...(p1?.data?.data || []),
+      ...(p2?.data?.data || []),
+      ...(p3?.data?.data || []),
+      ...(p4?.data?.data || []),
+      ...(p5?.data?.data || []),
+      ...(p6?.data?.data || []),
+      ...(p7?.data?.data || []),
+      ...(p8?.data?.data || [])
+    ];
+    
+    latestRaw = raw.map(a => ({
+      id: a.anime_session,
+      name: a.anime_title,
+      episode: a.episode,
+      imageUrl: a.snapshot
+    }));
+  } catch (err) {
+    console.warn("AnimePahe home fetch failed:", err);
+  }
+
+  const seen = new Set();
+  const deduped = [];
+  for (const a of latestRaw) {
+    if (!seen.has(a.id)) {
+      seen.add(a.id);
+      deduped.push(a);
+    }
+  }
+
+  // Fetch actual posters instead of episode snapshots (in parallel)
+  await Promise.all(deduped.map(async (a) => {
+    try {
+      const info = await pahe.fetchAnimeInfo(a.id);
+      if (info) {
+        if (info.image) a.imageUrl = info.image; // Overwrite snapshot with actual poster
+        a.synopsis = info.description ? info.description.replace(/<[^>]*>?/gm, '').trim() : '';
+        a.status = info.status || 'Airing';
+        a.type = info.type || 'TV';
+
+        // Normalize episode number if this is a later season
+        if (info.episodes && info.episodes.length > 0) {
+          let offset = 0;
+          if (info.episodes[0]?.number > 1) {
+            offset = info.episodes[0].number - 1;
+          }
+          if (a.episode) {
+            a.episode = a.episode - offset;
+          }
+        }
+      }
+    } catch(e) {}
+  }));
+
+  const spotlights = deduped.slice(0, 5).map(a => ({ ...a, type: a.type || 'TV', status: a.status || 'Airing' }));
+  
+  const rem = deduped.slice(5);
+  const mid = Math.floor(rem.length / 2);
+  const latest = rem.slice(0, mid);
+  const trending = rem.slice(mid).map(a => ({ ...a, type: a.type || 'TV' }));
+
+  return { spotlights, trending, latest };
+}
+
 export default {
   search,
   getEpisodeList,
   getPlayableStreams,
+  getHomeData,
 };
