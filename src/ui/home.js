@@ -4,9 +4,8 @@
 
 import blessed from 'neo-blessed';
 import { COLORS, BOX, createLoadingSpinner } from './components.js';
-import { getHomeData } from '../api/provider.js';
+import { getHomeData, search } from '../api/provider.js';
 import { renderImage } from '../utils/image.js';
-import { search } from '../api/provider.js';
 // ─── Constants ───────────────────────────────────────────────────
 const ACCENT_COLORS = [
   '#e879f9', '#c084fc', '#a78bfa', '#818cf8', '#38bdf8',
@@ -142,7 +141,7 @@ function paintAllImages() {
       // 2. Write Sixel data
       const vtRow = trueAbsTop + 1;  // VT100 is 1-based
       const vtCol = trueAbsLeft + 1;
-      
+
       // Save cursor, position, write Sixel, restore cursor
       prog._write('\x1b7' + `\x1b[${vtRow};${vtCol}H` + img.art + '\x1b8');
 
@@ -229,7 +228,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
   screen.on('render', paintAllImages);
 
   const contentW = screen.width || 80;
-  
+
   // State variables
   let sec = 0, ci = [0, 0, 0];
   let tStartIndex = 0, lStartIndex = 0;
@@ -238,6 +237,9 @@ export async function showHomeScreen(layout, navigate, data = {}) {
   let spotBox = null, tCards = [], lCards = [];
   let trendContainer = null, latestContainer = null;
   let tDivider = null, lDivider = null;
+  let latestYOffset = 0; // Track where the Latest section starts
+  let spotDivider = null, footerBox = null; // For repositioning on scroll
+  let row1Elements = []; // All Row 1 elements to hide/show
 
   // Restore state if returning from another screen
   if (data.fromBack && cachedState) {
@@ -294,7 +296,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
 
   // ─── Row 1: Spotlight (Left) + Trending (Right) ──────────────────
   if (spotlights && spotlights.length > 0) {
-    blessed.box({
+    spotDivider = blessed.box({
       parent: content, top: yOffset, left: marginL,
       width: spotW, height: 1, tags: true,
       style: { bg: COLORS.bg },
@@ -328,7 +330,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
       top: 0, left: posterW + 3,
       width: infoW, height: spotH - 2,
       tags: true,
-      style: { bg: COLORS.card }
+      style: { bg: COLORS.card },
     });
 
     function updateSpotlightContent(index) {
@@ -339,7 +341,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
       const status = sp.status ? sp.status.replace('Currently ', '') : '';
       const meta = [score, type, status].filter(Boolean).join(`  {${COLORS.borderDim}-fg}${BOX.v}{/}  `);
 
-      const dots = spotlights.map((_, i) => i === index ? '{bold}●{/}' : '○').join(' ');
+      const dots = spotlights.length > 1 ? spotlights.map((_, i) => i === index ? '{bold}●{/}' : '○').join(' ') : '';
 
       infoBox.setContent([
         `{bold}{${COLORS.textBright}-fg}${trunc(sp.name, infoW)}{/}`,
@@ -347,8 +349,7 @@ export async function showHomeScreen(layout, navigate, data = {}) {
         `{${COLORS.rating}-fg}${meta}{/}`,
         '',
         ...wrapText(sp.synopsis || '', infoW - 2).slice(0, 4).map(l => `{${COLORS.textDim}-fg}${l}{/}`),
-        '',
-        `{${COLORS.textMuted}-fg}${dots}{/}`
+        ...(dots ? ['', `{${COLORS.textMuted}-fg}${dots}{/}`] : []),
       ].filter(l => l !== undefined).join('\n'));
 
       // Clear previous spotlight image
@@ -362,17 +363,6 @@ export async function showHomeScreen(layout, navigate, data = {}) {
           paintAllImages();
         }).catch(() => { });
       }
-      
-      // Also update the status bar if focus is on spotlight
-      if (sec === 0) {
-        setStatus([
-          ['↑↓', 'Spotlight'],
-          ['←→', 'Card'],
-          ['Enter', trunc(sp.name, 20)],
-          ['/', 'Search'],
-          ['q', 'Quit'],
-        ]);
-      }
     }
 
     updateSpotlightContent(spotlightIndex);
@@ -384,6 +374,8 @@ export async function showHomeScreen(layout, navigate, data = {}) {
         screen.render();
       }, 7000);
     }
+
+    row1Elements.push(spotDivider, spotBox);
   }
 
   // ─── Trending Section (Right side in Row 1) ──────────────────────
@@ -401,11 +393,13 @@ export async function showHomeScreen(layout, navigate, data = {}) {
     });
 
     tCards = makeCards(trendContainer, 0, trending, 1, false, screen, 0);
+
+    row1Elements.push(tDivider, trendContainer);
   }
 
   // Finalize Row 1 height if either Spotlight or Trending exists
   if ((spotlights && spotlights.length > 0) || trending.length > 0) {
-    yOffset += CARD_H + 2; 
+    yOffset += CARD_H + 2;
   }
 
   // ─── Row 2: Latest Releases ──────────────────────────────────────
@@ -423,11 +417,12 @@ export async function showHomeScreen(layout, navigate, data = {}) {
     });
 
     lCards = makeCards(latestContainer, 0, latest, 6, true, screen, 0);
+    latestYOffset = yOffset; // Save for scroll targeting
     yOffset += CARD_H + 2;
   }
 
-  // ─── Footer ────────────────────────────────────────────────────
-  blessed.box({
+  // ─── Footer ────────────────────────────────────────────────────────
+  footerBox = blessed.box({
     parent: content,
     top: yOffset, left: 1,
     width: contentW - 2, height: 3, tags: true,
@@ -524,6 +519,30 @@ export async function showHomeScreen(layout, navigate, data = {}) {
       ['q', 'Quit'],
     ]);
 
+    // Check if all sections fit in the visible content area
+    const contentH = content.height;
+    const totalNeeded = latestYOffset + CARD_H + 2 + 3; // Row1 + Latest + Footer
+    const allFits = contentH >= totalNeeded;
+
+    if (!allFits && sec === 2 && latestYOffset > 0) {
+      // Terminal too small: hide Row 1, shift Latest to top
+      row1Elements.forEach(el => { if (el) el.hide(); });
+      if (lDivider) lDivider.top = 0;
+      if (latestContainer) latestContainer.top = 1;
+      if (footerBox) footerBox.top = CARD_H + 3;
+    } else {
+      // Everything fits, or we're on Row 1: show all at original positions
+      row1Elements.forEach(el => { if (el) el.show(); });
+      if (lDivider) lDivider.top = latestYOffset;
+      if (latestContainer) latestContainer.top = latestYOffset + 1;
+      if (footerBox) footerBox.top = latestYOffset + CARD_H + 2;
+    }
+
+    // Reset content scroll position (we handle scrolling manually)
+    if (content.getScroll() !== 0) {
+      content.scrollTo(0);
+    }
+
     // Force exact physical layout clears and cache invalidation over Sixel footprints
     if (needsWipe) {
       screen.clearRegion(0, screen.width, 0, screen.height);
@@ -609,21 +628,21 @@ export async function showHomeScreen(layout, navigate, data = {}) {
         isNavigating = true;
         const spinner = createLoadingSpinner(content, 'Resolving stream data...');
         screen.render();
-        
+
         try {
           // Auto-resolve MAL title to AnimePahe showId
           const results = await search(anime.name, 'sub');
           spinner.destroy();
           cleanupHome();
-          
+
           if (results && results.length > 0) {
             const match = results[0];
-            navigate('detail', { 
-              showId: match.id, 
-              animeName: match.name, 
-              subEpisodes: match.subEpisodes, 
-              dubEpisodes: match.dubEpisodes, 
-              mode: 'sub' 
+            navigate('detail', {
+              showId: match.id,
+              animeName: match.name,
+              subEpisodes: match.subEpisodes,
+              dubEpisodes: match.dubEpisodes,
+              mode: 'sub'
             });
           } else {
             // Fallback to search screen if no direct match found

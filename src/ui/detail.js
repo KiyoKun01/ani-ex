@@ -285,7 +285,7 @@ export async function showDetailScreen(layout, navigate, data = {}) {
 
   screen.key(['b'], () => {
     cleanupDetail();
-    navigate('search', { query: data.searchQuery || '', mode: currentMode });
+    layout.goBack();
   });
 
   screen.key(['h'], () => {

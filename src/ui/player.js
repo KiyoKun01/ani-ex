@@ -9,6 +9,7 @@ import {
 } from './components.js';
 import { getPlayableStreams } from '../api/provider.js';
 import { launchPlayer } from '../utils/player.js';
+import { getConfig, saveConfig } from '../utils/config.js';
 
 /**
  * Show the episode player selection screen
@@ -18,11 +19,23 @@ export async function showPlayerScreen(layout, navigate, data = {}) {
 
   content.children.forEach(c => c.destroy());
   const modeLabel = (data.mode || 'sub').toUpperCase();
+  let currentPlayer = getConfig('player', 'mpv');
+
   setBreadcrumb([
     data.animeName || 'Anime',
     `EP ${data.episodeNumber || '?'} [${modeLabel}]`,
   ]);
-  setStatus([['↑↓', 'Select quality'], ['Enter', 'Play'], ['b', 'Back'], ['h', 'Home']]);
+
+  function updateStatusHints() {
+    setStatus([
+      ['↑↓', 'Quality'],
+      ['Enter', 'Play'],
+      ['p', `Player: ${currentPlayer.toUpperCase()}`],
+      ['b', 'Back'],
+      ['h', 'Home'],
+    ]);
+  }
+  updateStatusHints();
 
   // ─── Now Playing Card ──────────────────────────────────────────
   const nowPlayingCard = blessed.box({
@@ -41,7 +54,7 @@ export async function showPlayerScreen(layout, navigate, data = {}) {
     content: [
       '',
       `  {bold}{${COLORS.textBright}-fg}${BOX.play} Now Playing{/}`,
-      `  {${COLORS.text}-fg}${data.animeName || 'Unknown'}{/}  {${COLORS.textDim}-fg}${BOX.bullet}{/}  {${COLORS.accent}-fg}Episode ${data.episodeNumber || '?'}{/}  {${COLORS.textDim}-fg}${BOX.bullet}{/}  {${modeLabel === 'SUB' ? COLORS.badgeSub : COLORS.badgeDub}-fg}${modeLabel}{/}`,
+      `  {${COLORS.text}-fg}${data.animeName || 'Unknown'}{/}  {${COLORS.textDim}-fg}${BOX.bullet}{/}  {${COLORS.accent}-fg}Episode ${data.episodeNumber || '?'}{/}  {${COLORS.textDim}-fg}${BOX.bullet}{/}  {${modeLabel === 'SUB' ? COLORS.badgeSub : COLORS.badgeDub}-fg}${modeLabel}{/}  {${COLORS.textDim}-fg}${BOX.bullet}{/}  {${COLORS.textMuted}-fg}Player: {bold}{${COLORS.accent}-fg}${currentPlayer.toUpperCase()}{/}`,
     ].join('\n'),
   });
 
@@ -58,13 +71,7 @@ export async function showPlayerScreen(layout, navigate, data = {}) {
       screen.render();
 
       screen.key(['b'], () => {
-        navigate('detail', {
-          showId: data.showId,
-          animeName: data.animeName,
-          subEpisodes: data.subEpisodes,
-          dubEpisodes: data.dubEpisodes,
-          mode: data.mode,
-        });
+        layout.goBack();
       });
       return;
     }
@@ -153,6 +160,7 @@ export async function showPlayerScreen(layout, navigate, data = {}) {
           subtitleUrl: selected.subtitleUrl || null,
           subtitles: selected.subtitles || null,
           type: selected.type,
+          preferredPlayer: currentPlayer,
         });
 
         statusBox.destroy();
@@ -184,17 +192,26 @@ export async function showPlayerScreen(layout, navigate, data = {}) {
 
     // ─── Key Handlers ─────────────────────────────────────────────
     screen.key(['b'], () => {
-      navigate('detail', {
-        showId: data.showId,
-        animeName: data.animeName,
-        subEpisodes: data.subEpisodes,
-        dubEpisodes: data.dubEpisodes,
-        mode: data.mode,
-      });
+      layout.goBack();
     });
 
     screen.key(['h'], () => {
       navigate('home', {});
+    });
+
+    // ─── Player Toggle ────────────────────────────────────────────
+    screen.key(['p'], () => {
+      currentPlayer = currentPlayer === 'mpv' ? 'vlc' : 'mpv';
+      saveConfig('player', currentPlayer);
+      updateStatusHints();
+
+      // Update the Now Playing card to reflect the new player
+      nowPlayingCard.setContent([
+        '',
+        `  {bold}{${COLORS.textBright}-fg}${BOX.play} Now Playing{/}`,
+        `  {${COLORS.text}-fg}${data.animeName || 'Unknown'}{/}  {${COLORS.textDim}-fg}${BOX.bullet}{/}  {${COLORS.accent}-fg}Episode ${data.episodeNumber || '?'}{/}  {${COLORS.textDim}-fg}${BOX.bullet}{/}  {${modeLabel === 'SUB' ? COLORS.badgeSub : COLORS.badgeDub}-fg}${modeLabel}{/}  {${COLORS.textDim}-fg}${BOX.bullet}{/}  {${COLORS.textMuted}-fg}Player: {bold}{${COLORS.accent}-fg}${currentPlayer.toUpperCase()}{/}`,
+      ].join('\n'));
+      screen.render();
     });
 
     screen.render();
@@ -205,13 +222,7 @@ export async function showPlayerScreen(layout, navigate, data = {}) {
     screen.render();
 
     screen.key(['b'], () => {
-      navigate('detail', {
-        showId: data.showId,
-        animeName: data.animeName,
-        subEpisodes: data.subEpisodes,
-        dubEpisodes: data.dubEpisodes,
-        mode: data.mode,
-      });
+      layout.goBack();
     });
 
     screen.key(['h'], () => {

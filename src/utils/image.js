@@ -8,7 +8,7 @@ import os from 'os';
 import crypto from 'crypto';
 import { execSync } from 'child_process';
 
-const CACHE_DIR = path.join(os.tmpdir(), 'animecli_img_cache');
+const CACHE_DIR = path.join(os.tmpdir(), 'aniex_img_cache');
 
 // Ensure cache directory exists
 try { fs.mkdirSync(CACHE_DIR, { recursive: true }); } catch { }

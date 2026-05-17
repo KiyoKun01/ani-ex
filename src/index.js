@@ -149,7 +149,7 @@ layout.screen.on('resize', () => {
     // (chafa images write directly to stdout, bypassing blessed)
     console.clear();
     process.stdout.write('\x1b[2J\x1b[3J\x1b[H');
-    
+
     // Force blessed to redraw its entire internal buffer to the physical screen
     // by marking all lines as dirty.
     if (layout.screen.lines) {

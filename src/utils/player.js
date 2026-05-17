@@ -4,15 +4,21 @@
 
 import { execSync, exec } from 'child_process';
 import path from 'path';
+import fs from 'fs';
 
 /**
  * Check if a command exists on the system
  */
 function hasCommand(cmd) {
   try {
-    execSync(`where ${cmd}`, { stdio: 'ignore' });
+    const isWin = process.platform === 'win32';
+    execSync(`${isWin ? 'where' : 'which'} ${cmd}`, { stdio: 'ignore' });
     return true;
   } catch {
+    if (cmd === 'vlc' && process.platform === 'win32') {
+      return fs.existsSync('C:\\Program Files\\VideoLAN\\VLC\\vlc.exe') || 
+             fs.existsSync('C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe');
+    }
     return false;
   }
 }
@@ -119,7 +125,20 @@ function launchVlc(streamUrl, title, options = {}) {
     }
   }
 
-  const cmd = `vlc ${args.join(' ')}`;
+  let vlcExe = 'vlc';
+  if (process.platform === 'win32') {
+    try {
+      execSync('where vlc', { stdio: 'ignore' });
+    } catch {
+      if (fs.existsSync('C:\\Program Files\\VideoLAN\\VLC\\vlc.exe')) {
+        vlcExe = '"C:\\Program Files\\VideoLAN\\VLC\\vlc.exe"';
+      } else if (fs.existsSync('C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe')) {
+        vlcExe = '"C:\\Program Files (x86)\\VideoLAN\\VLC\\vlc.exe"';
+      }
+    }
+  }
+
+  const cmd = `${vlcExe} ${args.join(' ')}`;
   const child = exec(cmd, { detached: true, stdio: 'ignore' });
   child.unref();
 

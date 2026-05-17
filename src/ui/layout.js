@@ -13,7 +13,7 @@ export function createLayout() {
   // ─── Screen ────────────────────────────────────────────────────
   const screen = blessed.screen({
     smartCSR: true,
-    title: 'ANI-ME-CLI — Anime in Your Terminal',
+    title: 'ANI-EX — Anime in Your Terminal',
     fullUnicode: true,
     dockBorders: true,
     resizeTimeout: 300,
@@ -43,29 +43,21 @@ export function createLayout() {
     const w = screen.width || 80;
 
     if (breadcrumbParts && breadcrumbParts.length > 0) {
-      // Breadcrumb mode: ★ ANI-ME-CLI ▸ Naruto ▸ EP 01 [SUB]
-      const logo = `{bold}{${COLORS.accent}-fg}${BOX.star} ANI-ME-CLI{/}`;
+      // Breadcrumb mode: ★ ANI-EX ▸ Naruto ▸ EP 01 [SUB]
+      const logo = `{bold}{${COLORS.accent}-fg}${BOX.star} ANI-EX{/}`;
       const crumbs = breadcrumbParts.map(p =>
         `{${COLORS.textDim}-fg}${BOX.bullet}{/} {${COLORS.text}-fg}${p}{/}`
       ).join('  ');
       header.setContent(`  ${logo}  ${crumbs}`);
     } else {
       // Tab mode with richer styling
-      const logo = `{bold}{${COLORS.accent}-fg}${BOX.star}{/} {bold}{${COLORS.grad1}-fg}A{${COLORS.grad2}-fg}N{${COLORS.grad3}-fg}I{/}{${COLORS.textDim}-fg}-{/}{bold}{${COLORS.grad2}-fg}M{${COLORS.grad3}-fg}E{/}{${COLORS.textDim}-fg}-{/}{bold}{${COLORS.grad4}-fg}C{${COLORS.grad3}-fg}L{${COLORS.grad2}-fg}I{/}`;
-      const tabs = ['home', 'search'].map(t => {
-        const icons = { home: BOX.diamond, search: BOX.bullet };
-        const label = t.charAt(0).toUpperCase() + t.slice(1);
-        if (t === activeTab) {
-          return `{${COLORS.accent}-bg}{#000-fg}{bold} ${icons[t]} ${label} {/}`;
-        }
-        return `{${COLORS.textMuted}-fg} ${icons[t]} ${label} {/}`;
-      }).join('  ');
+      const logo = `{bold}{${COLORS.accent}-fg}${BOX.star}{/} {bold}{${COLORS.grad1}-fg}A{${COLORS.grad2}-fg}N{${COLORS.grad3}-fg}I{/}{${COLORS.textDim}-fg}-{/}{bold}{${COLORS.grad4}-fg}E{${COLORS.grad3}-fg}X{/}`;
 
       // Right-align version
       const version = `{${COLORS.textMuted}-fg}v1.0{/}`;
-      const spacer = ' '.repeat(Math.max(1, w - 50));
+      const spacer = ' '.repeat(Math.max(1, w - 30));
 
-      header.setContent(`  ${logo}  ${BOX.v}  ${tabs}${spacer}${version} `);
+      header.setContent(`  ${logo}${spacer}${version} `);
     }
   }
 

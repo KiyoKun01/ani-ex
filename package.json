@@ -1,11 +1,11 @@
 {
-  "name": "ani-me-cli",
+  "name": "ani-ex",
   "version": "1.0.0",
   "description": "Anime website-style TUI for watching anime in the terminal",
   "main": "src/index.js",
   "type": "module",
   "bin": {
-    "anime-cli": "src/index.js"
+    "ani-ex": "src/index.js"
   },
   "scripts": {
     "start": "node src/index.js",
