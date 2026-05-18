@@ -1,13 +1,13 @@
 <p align="center">
   <img src="https://img.shields.io/badge/ANI--EX-★-e879f9?style=for-the-badge&labelColor=0a0a1a" alt="ANI-EX" />
   <img src="https://img.shields.io/badge/version-1.0.0-7c3aed?style=for-the-badge&labelColor=0a0a1a" alt="Version" />
-  <img src="https://img.shields.io/badge/license-MIT-34d399?style=for-the-badge&labelColor=0a0a1a" alt="License" />
+  <img src="https://img.shields.io/badge/license-GPLv3-34d399?style=for-the-badge&labelColor=0a0a1a" alt="License" />
   <img src="https://img.shields.io/badge/runtime-Bun-f472b6?style=for-the-badge&logo=bun&labelColor=0a0a1a" alt="Bun" />
   <img src="https://img.shields.io/badge/platform-Windows-38bdf8?style=for-the-badge&logo=windows&labelColor=0a0a1a" alt="Windows" />
 </p>
 
 <h1 align="center">
-  ★ ANI-EX
+  ANI-EX
 </h1>
 
 <p align="center">
@@ -19,43 +19,64 @@
   Built with <a href="https://github.com/embark-theme/neo-blessed">neo-blessed</a> and powered by <a href="https://animepahe.pw">AnimePahe</a>.
 </p>
 
-<p align="center">
-  <a href="#-features">Features</a> •
-  <a href="#%EF%B8%8F-installation">Installation</a> •
-  <a href="#-usage">Usage</a> •
-  <a href="#%EF%B8%8F-keybindings">Keybindings</a> •
-  <a href="#-architecture">Architecture</a> •
-  <a href="#-license">License</a>
-</p>
+---
+
+## Table of Contents
+
+- [Features](#features)
+- [Prerequisites](#prerequisites)
+- [Installation](#installation)
+  - [1. Install Scoop](#1-install-scoop-if-not-already-installed)
+  - [2. Install dependencies via Scoop](#2-install-dependencies-via-scoop)
+  - [3. Clone and install](#3-clone-and-install)
+  - [4. Run](#4-run)
+  - [Global Installation (optional)](#global-installation-optional)
+- [Usage](#usage)
+  - [Navigation Flow](#navigation-flow)
+- [Keybindings](#keybindings)
+  - [Global](#global)
+  - [Home Screen](#home-screen)
+  - [Search Screen](#search-screen)
+  - [Detail Screen](#detail-screen)
+  - [Player Screen](#player-screen)
+- [Architecture](#architecture)
+  - [Layer Overview](#layer-overview)
+  - [Data Flow](#data-flow)
+- [Terminal Recommendations](#terminal-recommendations)
+  - [Recommended Terminals](#recommended-terminals)
+- [Configuration](#configuration)
+- [Contributing](#contributing)
+- [License](#license)
+- [Disclaimer](#disclaimer)
 
 ---
 
-## ✨ Features
+## Features
 
-- **🏠 Rich Home Dashboard** — Spotlight carousel, trending anime, and latest releases with auto-rotating highlights
-- **🖼️ Sixel Image Rendering** — Anime poster art rendered directly in the terminal via [chafa](https://hpjansson.org/chafa/) with intelligent caching
-- **🔍 Instant Search** — Search AnimePahe's full catalog with recent search history and top airing suggestions
-- **📋 Episode Browser** — Detailed anime info panel with episode lists, genre tags, and SUB/DUB toggle
-- **▶️ One-Click Playback** — Stream episodes directly in [mpv](https://mpv.io/) (default) or [VLC](https://www.videolan.org/) with automatic quality selection
-- **🎨 Premium Design** — Deep purple/indigo color palette, gradient accents, box-drawing UI, and smooth animations
-- **⌨️ Keyboard-First Navigation** — Full vim-style navigation with contextual status bar hints
-- **📐 Responsive Layout** — Full re-render on terminal resize with no visual artifacts
-- **💾 Persistent Config** — Player preference and search history saved to `~/.aniex/config.json`
+- **Rich Home Dashboard** — Spotlight carousel, trending anime, and latest releases with auto-rotating highlights
+- **Sixel Image Rendering** — Anime poster art rendered directly in the terminal via [chafa](https://hpjansson.org/chafa/) with intelligent caching
+- **Instant Search** — Search AnimePahe's full catalog with recent search history and top airing suggestions
+- **Episode Browser** — Detailed anime info panel with episode lists, genre tags, and SUB/DUB toggle
+- **One-Click Playback** — Stream episodes directly in [mpv](https://mpv.io/) (default) or [VLC](https://www.videolan.org/) with automatic quality selection
+- **Premium Design** — Deep purple/indigo color palette, gradient accents, box-drawing UI, and smooth animations
+- **Keyboard-First Navigation** — Full vim-style navigation with contextual status bar hints
+- **Responsive Layout** — Full re-render on terminal resize with no visual artifacts
+- **Persistent Config** — Player preference and search history saved to `~/.aniex/config.json`
 
-## 🛠 Prerequisites
+## Prerequisites
 
 | Dependency | Purpose | Required |
 |:---|:---|:---:|
-| [Bun](https://bun.sh/) | JavaScript runtime & package manager | ✅ |
-| [Scoop](https://scoop.sh/) | Windows package manager (for installing tools) | ✅ |
-| [mpv](https://mpv.io/) | Video player (default) | ✅* |
-| [VLC](https://www.videolan.org/) | Video player (fallback) | ⚠️ |
-| [chafa](https://hpjansson.org/chafa/) | Terminal image rendering (Sixel) | ⚠️ |
+| [Bun](https://bun.sh/) | JavaScript runtime & package manager | Yes |
+| [Scoop](https://scoop.sh/) | Windows package manager (for installing tools) | Yes |
+| [mpv](https://mpv.io/) | Video player (default) | Yes* |
+| [VLC](https://www.videolan.org/) | Video player (fallback) | Optional |
+| [chafa](https://hpjansson.org/chafa/) | Terminal image rendering (Sixel) | Optional |
 
 > \* At least one video player (mpv or VLC) is required for playback.  
 > chafa is optional but **highly recommended** for poster art in the home screen.
 
-## ⚙️ Installation
+## Installation
 
 ### 1. Install Scoop (if not already installed)
 
@@ -115,13 +136,13 @@ Then run from anywhere:
 ani-ex
 ```
 
-## 🚀 Usage
+## Usage
 
 Launch the app and you'll land on the **Home** screen with three sections:
 
 | Section | Description |
 |:---|:---|
-| **★ Spotlight** | Auto-rotating featured anime with poster art and synopsis |
+| **Spotlight** | Auto-rotating featured anime with poster art and synopsis |
 | **Trending Now** | Horizontally scrollable grid of popular anime cards |
 | **Latest Releases** | Recently aired episodes with episode numbers |
 
@@ -130,12 +151,12 @@ Use arrow keys to navigate between sections and cards, press **Enter** to view d
 ### Navigation Flow
 
 ```
-Home → Search → Detail → Player
-  ↑       ↑        ↑
-  └───────┴────────┘  (press b to go back)
+Home --> Search --> Detail --> Player
+  ^        ^         ^
+  |________|_________|  (press b to go back)
 ```
 
-## ⌨️ Keybindings
+## Keybindings
 
 ### Global
 
@@ -150,9 +171,9 @@ Home → Search → Detail → Player
 
 | Key | Action |
 |:---:|:---|
-| `↑` `↓` | Navigate between sections (Spotlight → Trending → Latest) |
-| `←` `→` | Scroll through anime cards |
-| `Enter` | Select anime → go to Detail screen |
+| `Up` `Down` | Navigate between sections (Spotlight > Trending > Latest) |
+| `Left` `Right` | Scroll through anime cards |
+| `Enter` | Select anime, go to Detail screen |
 
 ### Search Screen
 
@@ -160,8 +181,8 @@ Home → Search → Detail → Player
 |:---:|:---|
 | `/` | Focus search input |
 | `Esc` | Exit search input / unfocus |
-| `↑` `↓` | Navigate results |
-| `Enter` | Select result → go to Detail screen |
+| `Up` `Down` | Navigate results |
+| `Enter` | Select result, go to Detail screen |
 | `c` | Clear search history |
 | `h` | Go to Home |
 
@@ -169,18 +190,18 @@ Home → Search → Detail → Player
 
 | Key | Action |
 |:---:|:---|
-| `↑` `↓` | Navigate episode list |
+| `Up` `Down` | Navigate episode list |
 | `Tab` | Toggle SUB / DUB mode |
-| `Enter` | Select episode → go to Player |
+| `Enter` | Select episode, go to Player |
 
 ### Player Screen
 
 | Key | Action |
 |:---:|:---|
-| `↑` `↓` | Select stream quality |
+| `Up` `Down` | Select stream quality |
 | `Enter` | Launch in video player (mpv/VLC) |
 
-## 🏗 Architecture
+## Architecture
 
 ```
 src/
@@ -225,7 +246,7 @@ graph LR
     G[chafa] -.->|Sixel art| A
 ```
 
-## ⚡ Terminal Recommendations
+## Terminal Recommendations
 
 For the best experience, use a terminal that supports:
 
@@ -237,12 +258,12 @@ For the best experience, use a terminal that supports:
 
 | Terminal | Truecolor | Sixel | Notes |
 |:---|:---:|:---:|:---|
-| **Windows Terminal** | ✅ | ✅ | Best experience on Windows |
-| **WezTerm** | ✅ | ✅ | Cross-platform, excellent Sixel support |
-| **Kitty** | ✅ | ❌ | Uses its own image protocol |
-| **iTerm2** | ✅ | ✅ | macOS only |
+| **Windows Terminal** | Yes | Yes | Best experience on Windows |
+| **WezTerm** | Yes | Yes | Cross-platform, excellent Sixel support |
+| **Kitty** | Yes | No | Uses its own image protocol |
+| **iTerm2** | Yes | Yes | macOS only |
 
-## 📝 Configuration
+## Configuration
 
 ANI-EX stores its configuration at `~/.aniex/config.json`:
 
@@ -258,7 +279,7 @@ ANI-EX stores its configuration at `~/.aniex/config.json`:
 | `player` | `"mpv"` \| `"vlc"` | `"mpv"` | Preferred video player |
 | `recentSearches` | `string[]` | `[]` | Last 5 search queries |
 
-## 🤝 Contributing
+## Contributing
 
 Contributions are welcome! Here's how to get started:
 
@@ -268,16 +289,16 @@ Contributions are welcome! Here's how to get started:
 4. **Push** to your fork: `git push origin feature/my-feature`
 5. **Open** a Pull Request
 
-## 📄 License
+## License
 
-This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the **GNU General Public License v3.0** — see the [LICENSE](LICENSE) file for details.
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 ANI-EX is a tool for personal use. It does not host or distribute any anime content. All streams are fetched from third-party providers. Please support the official anime industry by purchasing licensed content.
 
 ---
 
 <p align="center">
-  <strong>Made with 💜 by <a href="https://github.com/KiyoKun01">KiyoKun01</a></strong>
+  <strong>Made by <a href="https://github.com/KiyoKun01">KiyoKun01</a></strong>
 </p>
