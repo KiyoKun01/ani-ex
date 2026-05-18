@@ -19,6 +19,10 @@
   Built with <a href="https://github.com/embark-theme/neo-blessed">neo-blessed</a> and powered by <a href="https://animepahe.pw">AnimePahe</a>.
 </p>
 
+## Demo
+
+https://github.com/KiyoKun01/ani-ex/issues/1#issue-4471171495
+
 ---
 
 ## Table of Contents
@@ -281,13 +285,9 @@ ANI-EX stores its configuration at `~/.aniex/config.json`:
 
 ## Contributing
 
-Contributions are welcome! Here's how to get started:
+Contributions are welcome! Since the project is not entirely stable yet and there might still be some bugs, anyone who wants to contribute is highly appreciated.
 
-1. **Fork** the repository
-2. **Create** a feature branch: `git checkout -b feature/my-feature`
-3. **Commit** your changes: `git commit -m "feat: add my feature"`
-4. **Push** to your fork: `git push origin feature/my-feature`
-5. **Open** a Pull Request
+Please see our [Contribution Guidelines](CONTRIBUTING.md) for more details on how to get started.
 
 ## License
 
