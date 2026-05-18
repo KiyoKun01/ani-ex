@@ -96,33 +96,6 @@ export async function renderImage(url, opts = {}) {
 }
 
 /**
- * Render from local file synchronously
- */
-export function renderImageSync(filePath, opts = {}) {
-  const width = opts.width || 20;
-  const height = opts.height || 10;
-
-  if (!filePath || !fs.existsSync(filePath)) {
-    return createPlaceholder(width, height);
-  }
-
-  try {
-    const result = execSync(
-      `chafa --format=sixel "${filePath}" --size ${width}x${height} --stretch --color-space din99d --color-extractor median --dither none --animate off`,
-      {
-        encoding: 'utf-8',
-        timeout: 5000,
-        windowsHide: true,
-        stdio: ['pipe', 'pipe', 'pipe'],
-      }
-    );
-    return cleanChafaOutput(result).trimEnd() || createPlaceholder(width, height);
-  } catch {
-    return createPlaceholder(width, height);
-  }
-}
-
-/**
  * Create a text placeholder when image can't be loaded
  */
 function createPlaceholder(width, height) {
@@ -147,16 +120,4 @@ function createPlaceholder(width, height) {
   return lines.join('\n');
 }
 
-/**
- * Clean up cached images
- */
-export function clearImageCache() {
-  try {
-    const files = fs.readdirSync(CACHE_DIR);
-    for (const f of files) {
-      fs.unlinkSync(path.join(CACHE_DIR, f));
-    }
-  } catch { }
-}
-
-export default { renderImage, renderImageSync, clearImageCache };
+export default { renderImage };

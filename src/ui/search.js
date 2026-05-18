@@ -4,15 +4,14 @@
 import blessed from 'neo-blessed';
 import {
   COLORS, BOX,
-  createLoadingSpinner, createErrorBox,
+  createLoadingSpinner,
   createSectionHeader, formatAnimeCard,
   renderModeToggle,
 } from './components.js';
 import { search, getHomeData } from '../api/provider.js';
 import { getConfig, saveConfig } from '../utils/config.js';
 
-// ─── Constants ───────────────────────────────────────────────────
-const GRADIENT_COLORS = ['#e879f9', '#d946ef', '#c026d3', '#a855f7', '#8b5cf6', '#7c3aed'];
+
 const MAX_RECENT = 5;
 
 const SEARCH_TIPS = [

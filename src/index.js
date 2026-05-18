@@ -125,6 +125,9 @@ function goBack() {
 // ─── Initialize App ──────────────────────────────────────────────
 const layout = createLayout();
 
+// Expose goBack on layout so individual screens can call layout.goBack()
+layout.goBack = goBack;
+
 // Register persistent global keybindings
 // 'r' to refresh current screen
 layout.screen.key(['r'], () => {

@@ -127,6 +127,30 @@ function formatEpisodeItem(epNum, index) {
   return `  ${prefix} {${COLORS.textBright}-fg}Episode ${padded}{/}${titleStr}`;
 }
 
+// ─── Text Wrapping Utility ───────────────────────────────────────
+/**
+ * Wrap text to fit within a given width
+ * @param {string} text - Text to wrap
+ * @param {number} maxWidth - Maximum line width
+ * @returns {string[]} Array of wrapped lines
+ */
+function wrapText(text, maxWidth) {
+  if (!text) return [];
+  const words = text.split(' ');
+  const lines = [];
+  let current = '';
+  for (const word of words) {
+    if (current.length + word.length + 1 > maxWidth) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = current ? current + ' ' + word : word;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
 // ─── Stream Quality Item ─────────────────────────────────────────
 /**
  * Format a styled stream quality list item
@@ -233,88 +257,11 @@ function createErrorBox(parent, message) {
   });
 }
 
-// ─── Info Box ────────────────────────────────────────────────────
-function createInfoBox(parent, title, lines, options = {}) {
-  const contentLines = [
-    '',
-    `  {bold}{${COLORS.accent}-fg}${title}{/}`,
-    `  {${COLORS.borderDim}-fg}${BOX.h.repeat(40)}{/}`,
-    ...lines.map(l => `  ${l}`),
-    '',
-  ];
-
-  return blessed.box({
-    parent,
-    top: options.top || 1,
-    left: options.left || 2,
-    width: options.width || '100%-4',
-    height: options.height || contentLines.length + 2,
-    tags: true,
-    style: {
-      fg: COLORS.text,
-      bg: COLORS.card,
-      border: { fg: COLORS.border },
-    },
-    border: 'line',
-    content: contentLines.join('\n'),
-  });
-}
-
-// ─── Styled List ─────────────────────────────────────────────────
-function createStyledList(parent, options = {}) {
-  return blessed.list({
-    parent,
-    top: options.top || 0,
-    left: options.left || 2,
-    width: options.width || '100%-4',
-    height: options.height || '100%-2',
-    scrollable: true,
-    mouse: true,
-    keys: true,
-    vi: true,
-    tags: true,
-    scrollbar: {
-      ch: '▐',
-      style: { bg: COLORS.accentDim },
-    },
-    style: {
-      fg: COLORS.text,
-      bg: COLORS.bg,
-      selected: {
-        fg: COLORS.textBright,
-        bg: COLORS.highlightBg,
-        bold: true,
-      },
-      item: {
-        fg: COLORS.text,
-        bg: COLORS.bg,
-      },
-    },
-    ...options,
-  });
-}
-
-// ─── Genre Tags ──────────────────────────────────────────────────
-const GENRES = [
-  'Action', 'Adventure', 'Comedy', 'Drama', 'Fantasy', 'Horror',
-  'Isekai', 'Mecha', 'Romance', 'Sci-Fi', 'Slice of Life', 'Sports',
-  'Supernatural', 'Thriller', 'Mystery',
-];
-
-function renderGenreTags(selectedGenre = null) {
-  return GENRES.map(g => {
-    if (g === selectedGenre) {
-      return `{${COLORS.accent}-bg}{#000-fg}{bold} ${g} {/}`;
-    }
-    return `{${COLORS.surfaceAlt}-bg}{${COLORS.textDim}-fg} ${g} {/}`;
-  }).join(' ');
-}
-
 // ─── Exports ─────────────────────────────────────────────────────
 export {
   COLORS,
   BOX,
-  GENRES,
+  wrapText,
   createSectionHeader,
   formatAnimeCard,
   formatEpisodeItem,
@@ -322,7 +269,4 @@ export {
   renderModeToggle,
   createLoadingSpinner,
   createErrorBox,
-  createInfoBox,
-  createStyledList,
-  renderGenreTags,
 };

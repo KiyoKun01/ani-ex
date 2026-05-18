@@ -3,7 +3,7 @@
 // Uses chafa for anime poster rendering in spotlight
 
 import blessed from 'neo-blessed';
-import { COLORS, BOX, createLoadingSpinner } from './components.js';
+import { COLORS, BOX, wrapText, createLoadingSpinner } from './components.js';
 import { getHomeData, search } from '../api/provider.js';
 import { renderImage } from '../utils/image.js';
 // ─── Constants ───────────────────────────────────────────────────
@@ -14,8 +14,6 @@ const ACCENT_COLORS = [
 const CARD_W = 15;
 const CARD_H = 15;
 const CARD_GAP = 1;
-
-const GRADIENT_COLORS = ['#e879f9', '#d946ef', '#c026d3', '#a855f7', '#8b5cf6', '#7c3aed'];
 
 // ─── Tips ────────────────────────────────────────────────────────
 const TIPS = [
@@ -43,23 +41,6 @@ function getRandomTip() {
 function trunc(s, n) {
   if (!s) return ''.padEnd(n);
   return s.length > n ? s.slice(0, n - 1) + '…' : s.padEnd(n);
-}
-
-function wrapText(text, maxWidth) {
-  if (!text) return [];
-  const words = text.split(' ');
-  const lines = [];
-  let current = '';
-  for (const word of words) {
-    if (current.length + word.length + 1 > maxWidth) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = current ? current + ' ' + word : word;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
 }
 
 // ─── Section Divider ─────────────────────────────────────────────

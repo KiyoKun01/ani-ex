@@ -6,6 +6,7 @@ import {
   COLORS, BOX,
   createLoadingSpinner, createErrorBox,
   formatEpisodeItem, renderModeToggle, createSectionHeader,
+  wrapText,
 } from './components.js';
 import { getEpisodeList } from '../api/provider.js';
 import { renderImage } from '../utils/image.js';
@@ -58,23 +59,6 @@ function paintDetailImages() {
       }
     }
   }, 30);
-}
-
-function wrapText(text, maxWidth) {
-  if (!text) return [];
-  const words = text.split(' ');
-  const lines = [];
-  let current = '';
-  for (const word of words) {
-    if (current.length + word.length + 1 > maxWidth) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = current ? current + ' ' + word : word;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
 }
 
 /**
