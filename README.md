@@ -300,5 +300,5 @@ ANI-EX is a tool for personal use. It does not host or distribute any anime cont
 ---
 
 <p align="center">
-  <strong>Made by <a href="https://github.com/KiyoKun01">KiyoKun01</a></strong>
+  <strong>Made by <a href="https://github.com/KiyoKun01">KiyoKun</a></strong>
 </p>
