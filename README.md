@@ -100,20 +100,22 @@ Invoke-RestMethod -Uri https://get.scoop.sh | Invoke-Expression
 # Install Bun runtime
 scoop install bun
 
+# Install chafa for terminal anime posters
+scoop bucket add extras
+scoop install chafa
+
 # Install video player (at least one is required)
 scoop install mpv     # Recommended
 scoop install vlc     # Optional fallback
 
-# Install chafa for terminal poster art (optional but recommended)
-scoop bucket add extras
-scoop install chafa
+
 ```
 
 ### 3. Clone and install
 
 ```powershell
-git clone https://github.com/KiyoKun01/AnimeCLI.git
-cd AnimeCLI
+git clone https://github.com/KiyoKun01/ani-ex
+cd ani-ex
 bun install
 ```
 
@@ -129,7 +131,7 @@ Or run directly:
 bun src/index.js
 ```
 
-### Global Installation (optional)
+### Global Installation (optional but recommended)
 
 To install `ani-ex` as a global command:
 
@@ -207,6 +209,7 @@ Home --> Search --> Detail --> Player
 |:---:|:---|
 | `Up` `Down` | Select stream quality |
 | `Enter` | Launch in video player (mpv/VLC) |
+| `p` | Change the default video player (mpv/VLC) |
 
 ## Architecture
 
