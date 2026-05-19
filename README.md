@@ -1,9 +1,12 @@
 <p align="center">
-  <img src="https://img.shields.io/badge/ANI--EX-★-e879f9?style=for-the-badge&labelColor=0a0a1a" alt="ANI-EX" />
-  <img src="https://img.shields.io/badge/version-1.0.0-7c3aed?style=for-the-badge&labelColor=0a0a1a" alt="Version" />
-  <img src="https://img.shields.io/badge/license-GPLv3-34d399?style=for-the-badge&labelColor=0a0a1a" alt="License" />
-  <img src="https://img.shields.io/badge/runtime-Bun-f472b6?style=for-the-badge&logo=bun&labelColor=0a0a1a" alt="Bun" />
-  <img src="https://img.shields.io/badge/platform-Windows-38bdf8?style=for-the-badge&logo=windows&labelColor=0a0a1a" alt="Windows" />
+  <a href="https://github.com/KiyoKun01/ani-ex/pulls"><img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg" alt="PRs Welcome"></a>
+  <a href="https://github.com/KiyoKun01/ani-ex/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/version-1.0.0-blue.svg" alt="Version"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPLv3-blue.svg" alt="License"></a>
+  <br>
+  <img src="https://img.shields.io/badge/runtime-bun-brightgreen.svg" alt="Bun">
+  <img src="https://img.shields.io/badge/os-windows-brightgreen.svg" alt="Windows">
+  <br>
+  <a href="https://github.com/KiyoKun01"><img src="https://img.shields.io/badge/lead-KiyoKun-lightblue.svg" alt="Lead KiyoKun"></a>
 </p>
 
 <h1 align="center">
