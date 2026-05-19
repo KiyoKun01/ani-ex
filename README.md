@@ -21,7 +21,7 @@
 
 ## Demo
 
-https://github.com/KiyoKun01/ani-ex/issues/1#issue-4471171495
+https://github.com/user-attachments/assets/08a74126-71aa-467e-8ac9-84b8f4ceeb18
 
 ---
 
