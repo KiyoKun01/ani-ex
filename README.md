@@ -136,7 +136,7 @@ bun src/index.js
 To install `ani-ex` as a global command:
 
 ```powershell
-bun link
+bun link ani-ex
 ```
 
 Then run from anywhere:
